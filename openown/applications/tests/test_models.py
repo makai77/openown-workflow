@@ -1,7 +1,6 @@
 import pytest
 
-from openown.applications.models import Application
-
+from ..models import Application
 from .factories import ApplicantFactory
 from .factories import ApplicationAuditLogFactory
 from .factories import ApplicationFactory
@@ -20,8 +19,17 @@ def test_application_str():
 
 
 @pytest.mark.django_db
-def test_draft_is_editable():
-    app = ApplicationFactory(status=Application.Status.DRAFT)
+@pytest.mark.parametrize(
+    "status",
+    [
+        Application.Status.DRAFT,
+        Application.Status.RETURNED,
+    ],
+)
+def test_draft_or_returned_is_editable(status):
+    # A returned application goes back to the owner to revise — see the workflow
+    # spec ("RETURNED: owner can re-submit").
+    app = ApplicationFactory(status=status)
     assert app.is_editable_by_applicant is True
 
 
@@ -33,10 +41,9 @@ def test_draft_is_editable():
         Application.Status.UNDER_REVIEW,
         Application.Status.APPROVED,
         Application.Status.REJECTED,
-        Application.Status.RETURNED,
     ],
 )
-def test_non_draft_not_editable(status):
+def test_in_review_or_terminal_not_editable(status):
     app = ApplicationFactory(status=status)
     assert app.is_editable_by_applicant is False
 

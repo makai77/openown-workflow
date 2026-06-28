@@ -9,14 +9,6 @@ class ApplicationQuerySet(models.QuerySet):
     def for_reviewer_queue(self):
         return self.exclude(status=Application.Status.DRAFT)
 
-    def submitted_or_under_review(self):
-        return self.filter(
-            status__in=[
-                Application.Status.SUBMITTED,
-                Application.Status.UNDER_REVIEW,
-            ],
-        )
-
     def with_owner(self):
         return self.select_related("owner")
 
@@ -80,7 +72,9 @@ class Application(models.Model):
 
     @property
     def is_editable_by_applicant(self) -> bool:
-        return self.status == self.Status.DRAFT
+        # A returned application goes back to the owner to revise and re-submit,
+        # so it is editable too (workflow spec: "RETURNED: owner can re-submit").
+        return self.status in {self.Status.DRAFT, self.Status.RETURNED}
 
     @property
     def is_reviewable(self) -> bool:

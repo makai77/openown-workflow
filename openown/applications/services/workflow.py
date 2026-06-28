@@ -1,9 +1,8 @@
 from django.db import transaction
 from django.utils import timezone
 
-from openown.applications.models import Application
-from openown.applications.models import ApplicationAuditLog
-
+from ..models import Application
+from ..models import ApplicationAuditLog
 from .exceptions import CommentRequired
 from .exceptions import InvalidTransition
 from .exceptions import WorkflowPermissionDenied
@@ -15,8 +14,8 @@ def submit_application(*, application: Application, actor) -> Application:
         _require_owner(application=application, actor=actor)
         _require_status(
             application=application,
-            allowed={Application.Status.DRAFT},
-            message="Only draft applications can be submitted.",
+            allowed={Application.Status.DRAFT, Application.Status.RETURNED},
+            message="Only draft or returned applications can be submitted.",
         )
         return _transition(
             application=application,
@@ -93,6 +92,7 @@ def return_application(*, application: Application, actor, comment: str) -> Appl
             actor=actor,
             to_status=Application.Status.RETURNED,
             comment=comment,
+            reviewed=True,
         )
 
 
@@ -100,6 +100,12 @@ def return_application(*, application: Application, actor, comment: str) -> Appl
 
 
 def _locked_application(application: Application) -> Application:
+    # Returns a BARE re-fetched instance (no select_related / prefetch) locked
+    # FOR UPDATE. The transition functions hand this object back, so a caller that
+    # serializes it for a detail response must re-fetch the pk through the
+    # ViewSet's _detail_queryset() (.with_owner().with_audit_trail()) rather than
+    # serialize this value directly — otherwise owner + audit_logs lazy-load and
+    # break the fixed query budget.
     return Application.objects.select_for_update().get(pk=application.pk)
 
 

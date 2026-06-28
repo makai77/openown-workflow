@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import factory
 
-from openown.applications.models import Application
-from openown.applications.models import ApplicationAuditLog
 from openown.users.models import User
 from openown.users.tests.factories import UserFactory
+
+from ..models import Application
+from ..models import ApplicationAuditLog
 
 
 class ApplicantFactory(UserFactory):

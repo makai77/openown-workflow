@@ -10,6 +10,11 @@ class ApplicationAuditLogInline(admin.TabularInline):
     can_delete = False
     readonly_fields = ["actor", "from_status", "to_status", "comment", "created_at"]
 
+    def get_queryset(self, request):
+        # The inline renders `actor` on every row; resolve the FK in one JOIN
+        # instead of a query per audit entry on the detail page.
+        return super().get_queryset(request).select_related("actor")
+
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):

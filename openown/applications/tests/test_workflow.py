@@ -2,7 +2,7 @@
 Workflow test matrix — Playbook §8.2.
 
 Every test follows the same three-part shape:
-  1. Set up state via the factory (never a bare application.status = ...).
+  1. Set up state via the factory (never by assigning the status field directly).
   2. Call the service function (or assert it raises).
   3. Verify the outcome: status via refresh_from_db(), audit log count.
 
@@ -12,16 +12,15 @@ Illegal paths: confirm status is unchanged and zero audit logs were written.
 
 import pytest
 
-from openown.applications.models import Application
-from openown.applications.services import approve_application
-from openown.applications.services import reject_application
-from openown.applications.services import return_application
-from openown.applications.services import start_review_application
-from openown.applications.services import submit_application
-from openown.applications.services.exceptions import CommentRequired
-from openown.applications.services.exceptions import InvalidTransition
-from openown.applications.services.exceptions import WorkflowPermissionDenied
-
+from ..models import Application
+from ..services import approve_application
+from ..services import reject_application
+from ..services import return_application
+from ..services import start_review_application
+from ..services import submit_application
+from ..services.exceptions import CommentRequired
+from ..services.exceptions import InvalidTransition
+from ..services.exceptions import WorkflowPermissionDenied
 from .factories import ApplicantFactory
 from .factories import ApplicationFactory
 from .factories import ReviewerFactory
@@ -60,7 +59,24 @@ def test_non_owner_cannot_submit_draft():
 
 
 @pytest.mark.django_db
-def test_owner_cannot_submit_non_draft():
+def test_owner_can_resubmit_returned_application():
+    # A reviewer-returned application can be re-submitted by its owner — see the
+    # workflow spec ("RETURNED: owner can re-submit").
+    applicant = ApplicantFactory()
+    app = ApplicationFactory(owner=applicant, status=Application.Status.RETURNED)
+
+    result = submit_application(application=app, actor=applicant)
+
+    result.refresh_from_db()
+    assert result.status == Application.Status.SUBMITTED
+    assert result.audit_logs.count() == 1
+    log = result.audit_logs.first()
+    assert log.from_status == Application.Status.RETURNED
+    assert log.to_status == Application.Status.SUBMITTED
+
+
+@pytest.mark.django_db
+def test_owner_cannot_submit_in_review_or_terminal():
     applicant = ApplicantFactory()
     app = ApplicationFactory(owner=applicant, status=Application.Status.SUBMITTED)
 
@@ -193,6 +209,7 @@ def test_reviewer_returns_submitted_or_under_review_with_comment(from_status):
 
     result.refresh_from_db()
     assert result.status == Application.Status.RETURNED
+    assert result.reviewed_at is not None
     assert result.audit_logs.count() == 1
     log = result.audit_logs.first()
     assert log.from_status == from_status
