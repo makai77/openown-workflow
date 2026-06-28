@@ -139,7 +139,10 @@ lint.ignore = [
   # of types for comparison.
   # Deactivated because it can make the code slow:
   # https://github.com/astral-sh/ruff/issues/7871
-  "N818",   # Exception names without Error suffix — playbook names are spec (InvalidTransition etc.)
+  "N818",    # Exception names without Error suffix — playbook names are spec (InvalidTransition etc.)
+  "EM101",   # String literal in exception — message IS the error contract value
+  "TRY003",  # Long messages outside exception class — intentional for structured errors
+  "PLR0913", # Too many arguments — _transition is keyword-only; all args are needed
 ]
 lint.isort.force-single-line = true
 
