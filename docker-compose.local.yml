@@ -1,0 +1,45 @@
+volumes:
+  openown_local_postgres_data: {}
+  openown_local_postgres_data_backups: {}
+  
+
+services:
+  django:
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: openown_local_django
+    container_name: openown_local_django
+    dns:
+      - 192.168.0.1
+      - 8.8.8.8
+    depends_on:
+      - postgres
+      - mailpit
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - '8000:8000'
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: openown_production_postgres
+    container_name: openown_local_postgres
+    volumes:
+      - openown_local_postgres_data:/var/lib/postgresql/18/docker
+      - openown_local_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.local/.postgres
+
+  mailpit:
+    image: docker.io/axllent/mailpit:latest
+    container_name: openown_local_mailpit
+    ports:
+      - "8025:8025"
