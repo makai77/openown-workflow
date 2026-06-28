@@ -304,7 +304,12 @@ CORS_URLS_REGEX = r"^/api/.*$"
 # See more configuration options at https://drf-spectacular.readthedocs.io/en/latest/settings.html#settings
 SPECTACULAR_SETTINGS = {
     "TITLE": "Open Ownership Workflow API",
-    "DESCRIPTION": "Documentation of API endpoints of Open Ownership Workflow",
+    "DESCRIPTION": (
+        "REST API for the Open Ownership Submission & Approval Workflow. "
+        "Manages application submission, reviewer assignment, status transitions "
+        "(submit → under_review → approved / rejected / returned_for_revision), "
+        "and per-application audit trail."
+    ),
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
     "SCHEMA_PATH_PREFIX": "/api/",

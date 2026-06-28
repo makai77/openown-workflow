@@ -8,13 +8,13 @@ Use FinalSubmissionReport as the literal go/no-go check before submission.
 These are agent-workflow helpers only — not DRF serializers, not production models.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 from pydantic import Field
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     low = "low"
     medium = "medium"
     high = "high"
