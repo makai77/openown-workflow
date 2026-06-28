@@ -139,6 +139,7 @@ lint.ignore = [
   # of types for comparison.
   # Deactivated because it can make the code slow:
   # https://github.com/astral-sh/ruff/issues/7871
+  "N818",   # Exception names without Error suffix — playbook names are spec (InvalidTransition etc.)
 ]
 lint.isort.force-single-line = true
 
