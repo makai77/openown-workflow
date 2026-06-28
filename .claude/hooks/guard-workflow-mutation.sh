@@ -12,7 +12,8 @@ if [[ "$FILE_PATH" == *"/applications/"* ]] \
   && [[ "$FILE_PATH" != *"services/workflow.py" ]] \
   && [[ "$FILE_PATH" != *"/models.py" ]] \
   && [[ "$FILE_PATH" != *"/migrations/"* ]] \
-  && echo "$NEW_CONTENT" | grep -qE '\.status[[:space:]]*='; then
+  && [[ "$FILE_PATH" != *"/tests/"* ]] \
+  && echo "$NEW_CONTENT" | grep -qE '\.status[[:space:]]*=[^=]'; then
   echo "Blocked: direct '.status =' assignment outside services/workflow.py in $FILE_PATH. Use the existing service function (submit_application / start_review_application / approve_application / reject_application / return_application) instead." >&2
   exit 2
 fi

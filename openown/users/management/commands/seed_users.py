@@ -27,16 +27,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for data in SEED_USERS:
-            password = data.pop("password")
+            password = data["password"]
+            defaults = {key: value for key, value in data.items() if key != "password"}
             user, created = User.objects.get_or_create(
                 email=data["email"],
-                defaults=data,
+                defaults=defaults,
             )
             if created:
                 user.set_password(password)
                 user.save(update_fields=["password"])
                 self.stdout.write(
-                    self.style.SUCCESS(f"Created {user.role} — {user.email}"),
+                    self.style.SUCCESS(f"Created {user.role} - {user.email}"),
                 )
             else:
                 self.stdout.write(f"Already exists: {user.email}")

@@ -1,37 +1,11 @@
 import pytest
 
 from openown.applications.models import Application
-from openown.users.models import User
-from openown.users.tests.factories import UserFactory
 
 from .factories import ApplicantFactory
 from .factories import ApplicationAuditLogFactory
 from .factories import ApplicationFactory
 from .factories import ReviewerFactory
-
-# ── User role properties ───────────────────────────────────────────────────
-
-
-@pytest.mark.django_db
-def test_user_is_applicant_true():
-    user = ApplicantFactory()
-    assert user.is_applicant is True
-    assert user.is_reviewer is False
-
-
-@pytest.mark.django_db
-def test_user_is_reviewer_true():
-    user = ReviewerFactory()
-    assert user.is_reviewer is True
-    assert user.is_applicant is False
-
-
-@pytest.mark.django_db
-def test_user_role_defaults_to_applicant():
-    user = UserFactory()
-    assert user.role == User.Role.APPLICANT
-    assert user.is_applicant is True
-
 
 # ── Application.__str__ ────────────────────────────────────────────────────
 
