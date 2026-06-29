@@ -17,10 +17,19 @@ SEED_USERS = [
     },
 ]
 
+# A Django-admin superuser for local inspection only. `role` governs business
+# access; `is_staff`/`is_superuser` are kept separate, for the admin site.
+SEED_ADMIN = {
+    "email": "admin@example.com",
+    "name": "Admin",
+    "password": "adminpass123",
+}
+
 
 class Command(BaseCommand):
     help = (
-        "Seed the database with one Applicant and one Reviewer for local development."
+        "Seed the database with one Applicant, one Reviewer, and a Django-admin "
+        "superuser for local development."
     )
 
     def handle(self, *args, **options):
@@ -36,4 +45,16 @@ class Command(BaseCommand):
             )
             self.stdout.write(
                 self.style.SUCCESS(f"Created {user.role} - {user.email}"),
+            )
+
+        if User.objects.filter(email=SEED_ADMIN["email"]).exists():
+            self.stdout.write(f"Already exists: {SEED_ADMIN['email']}")
+        else:
+            admin = User.objects.create_superuser(
+                email=SEED_ADMIN["email"],
+                password=SEED_ADMIN["password"],
+                name=SEED_ADMIN["name"],
+            )
+            self.stdout.write(
+                self.style.SUCCESS(f"Created superuser - {admin.email}"),
             )
