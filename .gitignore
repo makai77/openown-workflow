@@ -281,3 +281,7 @@ openown/media/
 
 ### Claude Code — un-ignore skills that clash with common gitignore words
 !.claude/skills/coverage/
+
+### Local scratch / personal notes (never commit)
+Quick reorientation so.txt
+revealcheck.py
