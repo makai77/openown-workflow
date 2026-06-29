@@ -282,6 +282,10 @@ openown/media/
 ### Claude Code — un-ignore skills that clash with common gitignore words
 !.claude/skills/coverage/
 
+### Frontend source dirs that collide with Python ignore patterns above
+# `lib/` (a Python build dir) otherwise swallows the SPA's frontend/src/lib.
+!frontend/src/lib/
+
 ### Local scratch / personal notes (never commit)
 Quick reorientation so.txt
 revealcheck.py

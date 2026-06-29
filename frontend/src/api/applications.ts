@@ -51,10 +51,21 @@ export interface CreateApplicationPayload {
 
 export type UpdateApplicationPayload = Partial<CreateApplicationPayload>;
 
+// DRF PageNumberPagination wraps list responses; the screens only need the rows,
+// so the list calls below unwrap `results`.
+interface Paginated<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 // ── Applicant ──────────────────────────────────────────────────────────────
 
-export function listApplications(): Promise<ApplicationListItem[]> {
-  return apiRequest<ApplicationListItem[]>("/applications/");
+export async function listApplications(): Promise<ApplicationListItem[]> {
+  const page =
+    await apiRequest<Paginated<ApplicationListItem>>("/applications/");
+  return page.results;
 }
 
 export function createApplication(
@@ -88,12 +99,14 @@ export function submitApplication(id: number): Promise<ApplicationDetail> {
 
 // ── Reviewer ───────────────────────────────────────────────────────────────
 
-export function listReviewerQueue(
+export async function listReviewerQueue(
   status?: ApplicationStatus,
 ): Promise<ApplicationListItem[]> {
-  return apiRequest<ApplicationListItem[]>("/reviewer/applications/", {
-    query: { status },
-  });
+  const page = await apiRequest<Paginated<ApplicationListItem>>(
+    "/reviewer/applications/",
+    { query: { status } },
+  );
+  return page.results;
 }
 
 export function getReviewerApplication(id: number): Promise<ApplicationDetail> {

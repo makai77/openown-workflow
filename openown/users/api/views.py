@@ -1,5 +1,6 @@
 from typing import cast
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.mixins import ListModelMixin
@@ -10,6 +11,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from openown.users.models import User
 
+from .serializers import MeSerializer
 from .serializers import UserSerializer
 
 
@@ -24,7 +26,8 @@ class UserViewSet(RetrieveModelMixin, ListModelMixin, UpdateModelMixin, GenericV
         user = cast("User", self.request.user)
         return self.queryset.filter(id=user.id)
 
+    @extend_schema(responses=MeSerializer)
     @action(detail=False)
     def me(self, request):
-        serializer = UserSerializer(request.user, context={"request": request})
+        serializer = MeSerializer(request.user, context={"request": request})
         return Response(status=status.HTTP_200_OK, data=serializer.data)
