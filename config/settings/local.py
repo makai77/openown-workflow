@@ -67,5 +67,11 @@ if env("USE_DOCKER") == "yes":
 # https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
 INSTALLED_APPS += ["django_extensions"]
 
+# django-cors-headers
+# ------------------------------------------------------------------------------
+# Allow the Vite dev server (a separate origin) to call the API in local dev only.
+# Production CORS is NOT configured here — production stays locked down.
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
+
 # Your stuff...
 # ------------------------------------------------------------------------------
