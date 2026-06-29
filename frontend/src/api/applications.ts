@@ -49,6 +49,20 @@ export interface CreateApplicationPayload {
   amount?: string | null;
 }
 
+// Response of POST /applications/. ApplicationCreateSerializer (§6.1) returns
+// only these fields — not the full detail shape: no `owner`, no timestamps, no
+// `audit_logs`. Screens read `id` here, then navigate to the detail route which
+// refetches the full ApplicationDetail. Keeping this distinct from
+// ApplicationDetail makes the smaller contract explicit rather than implied.
+export interface ApplicationCreateResponse {
+  id: number;
+  title: string;
+  category: Category;
+  description: string;
+  amount: string | null;
+  status: ApplicationStatus;
+}
+
 export type UpdateApplicationPayload = Partial<CreateApplicationPayload>;
 
 // DRF PageNumberPagination wraps list responses; the screens only need the rows,
@@ -70,8 +84,8 @@ export async function listApplications(): Promise<ApplicationListItem[]> {
 
 export function createApplication(
   payload: CreateApplicationPayload,
-): Promise<ApplicationDetail> {
-  return apiRequest<ApplicationDetail>("/applications/", {
+): Promise<ApplicationCreateResponse> {
+  return apiRequest<ApplicationCreateResponse>("/applications/", {
     method: "POST",
     body: payload,
   });
