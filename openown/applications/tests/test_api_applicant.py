@@ -129,6 +129,11 @@ def test_applicant_edits_own_draft(api_client):
     assert response.status_code == HTTPStatus.OK
     application.refresh_from_db()
     assert application.title == "After"
+    # The PATCH response must carry the full detail shape (status + audit trail),
+    # not just the editable fields — clients cache it directly and render the
+    # status badge from it. Pins the edit-response contract (§6.1).
+    assert response.data["status"] == Application.Status.DRAFT
+    assert "audit_logs" in response.data
 
 
 @pytest.mark.django_db

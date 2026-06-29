@@ -148,6 +148,20 @@ class ApplicationViewSet(
     def perform_create(self, serializer: BaseSerializer) -> None:
         serializer.save(owner=self.request.user)
 
+    def update(self, request: Request, *args, **kwargs) -> Response:
+        # ApplicationUpdateSerializer validates and writes the editable fields,
+        # but its response carries only those fields — no status, owner, or audit
+        # trail. Echo the full detail shape instead so a client can cache the
+        # response directly without a follow-up GET. Mirrors the transition
+        # responses (submit / reviewer actions), which all return the detail read.
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        application = _detail_queryset().get(pk=instance.pk)
+        return Response(ApplicationDetailSerializer(application).data)
+
     @extend_schema(
         summary="Submit a draft for review",
         description=(
