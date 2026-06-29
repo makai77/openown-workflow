@@ -1,18 +1,25 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.db import models
 
+if TYPE_CHECKING:
+    from openown.users.models import User
 
-class ApplicationQuerySet(models.QuerySet):
-    def for_applicant(self, user):
+
+class ApplicationQuerySet(models.QuerySet["Application"]):
+    def for_applicant(self, user: User) -> ApplicationQuerySet:
         return self.filter(owner=user)
 
-    def for_reviewer_queue(self):
+    def for_reviewer_queue(self) -> ApplicationQuerySet:
         return self.exclude(status=Application.Status.DRAFT)
 
-    def with_owner(self):
+    def with_owner(self) -> ApplicationQuerySet:
         return self.select_related("owner")
 
-    def with_audit_trail(self):
+    def with_audit_trail(self) -> ApplicationQuerySet:
         return self.prefetch_related(
             models.Prefetch(
                 "audit_logs",

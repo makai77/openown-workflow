@@ -38,10 +38,10 @@ def test_anonymous_list_is_unauthorized(api_client):
 
 @pytest.mark.django_db
 def test_applicant_list_returns_only_own_applications(api_client):
-    owner = ApplicantFactory()
-    other = ApplicantFactory()
-    mine = ApplicationFactory(owner=owner)
-    ApplicationFactory(owner=other)  # must not appear
+    owner = ApplicantFactory.create()
+    other = ApplicantFactory.create()
+    mine = ApplicationFactory.create(owner=owner)
+    ApplicationFactory.create(owner=other)  # must not appear
     api_client.force_authenticate(owner)
 
     response = api_client.get(LIST_URL)
@@ -53,8 +53,8 @@ def test_applicant_list_returns_only_own_applications(api_client):
 
 @pytest.mark.django_db
 def test_applicant_cannot_see_another_applicants_application(api_client):
-    owner = ApplicantFactory()
-    other = ApplicationFactory(owner=ApplicantFactory())
+    owner = ApplicantFactory.create()
+    other = ApplicationFactory.create(owner=ApplicantFactory.create())
     api_client.force_authenticate(owner)
 
     response = api_client.get(detail_url(other.id))
@@ -68,7 +68,7 @@ def test_applicant_cannot_see_another_applicants_application(api_client):
 
 @pytest.mark.django_db
 def test_applicant_creates_draft(api_client):
-    applicant = ApplicantFactory()
+    applicant = ApplicantFactory.create()
     api_client.force_authenticate(applicant)
 
     response = api_client.post(
@@ -85,8 +85,8 @@ def test_applicant_creates_draft(api_client):
 
 @pytest.mark.django_db
 def test_create_ignores_client_supplied_owner_and_status(api_client):
-    applicant = ApplicantFactory()
-    other = ApplicantFactory()
+    applicant = ApplicantFactory.create()
+    other = ApplicantFactory.create()
     api_client.force_authenticate(applicant)
 
     response = api_client.post(
@@ -112,8 +112,8 @@ def test_create_ignores_client_supplied_owner_and_status(api_client):
 
 @pytest.mark.django_db
 def test_applicant_edits_own_draft(api_client):
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
         owner=applicant,
         status=Application.Status.DRAFT,
         title="Before",
@@ -135,8 +135,8 @@ def test_applicant_edits_own_draft(api_client):
 def test_applicant_can_edit_returned_application(api_client):
     # Pins the RETURNED-is-editable decision: a returned application goes back to
     # the owner to revise before re-submitting (is_editable_by_applicant).
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
         owner=applicant,
         status=Application.Status.RETURNED,
         title="Before",
@@ -156,8 +156,8 @@ def test_applicant_can_edit_returned_application(api_client):
 
 @pytest.mark.django_db
 def test_applicant_cannot_edit_submitted_application(api_client):
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
         owner=applicant,
         status=Application.Status.SUBMITTED,
         title="Locked",
@@ -181,8 +181,11 @@ def test_applicant_cannot_edit_submitted_application(api_client):
 
 @pytest.mark.django_db
 def test_applicant_submits_own_draft(api_client):
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(owner=applicant, status=Application.Status.DRAFT)
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
+        owner=applicant,
+        status=Application.Status.DRAFT,
+    )
     api_client.force_authenticate(applicant)
 
     response = api_client.post(submit_url(application.id), {}, format="json")
@@ -200,8 +203,8 @@ def test_applicant_submits_own_draft(api_client):
 def test_submitting_non_draft_is_invalid_transition(api_client):
     # The submit error path through the service: a SUBMITTED application owned by
     # the caller is visible (owner filter) but not in a submittable state.
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
         owner=applicant,
         status=Application.Status.SUBMITTED,
     )
@@ -217,10 +220,30 @@ def test_submitting_non_draft_is_invalid_transition(api_client):
 
 
 @pytest.mark.django_db
+def test_applicant_cannot_delete_application(api_client):
+    # Destroy is intentionally not exposed: deleting an application would erase its
+    # audit trail. The viewset omits DestroyModelMixin → 405.
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(
+        owner=applicant,
+        status=Application.Status.DRAFT,
+    )
+    api_client.force_authenticate(applicant)
+
+    response = api_client.delete(detail_url(application.id))
+
+    assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
+    assert Application.objects.filter(pk=application.id).exists()
+
+
+@pytest.mark.django_db
 def test_applicant_cannot_submit_another_users_draft(api_client):
-    owner = ApplicantFactory()
-    attacker = ApplicantFactory()
-    application = ApplicationFactory(owner=owner, status=Application.Status.DRAFT)
+    owner = ApplicantFactory.create()
+    attacker = ApplicantFactory.create()
+    application = ApplicationFactory.create(
+        owner=owner,
+        status=Application.Status.DRAFT,
+    )
     api_client.force_authenticate(attacker)
 
     response = api_client.post(submit_url(application.id), {}, format="json")

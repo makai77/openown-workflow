@@ -26,7 +26,7 @@ def action_url(pk, name):
 
 @pytest.mark.django_db
 def test_applicant_cannot_access_reviewer_queue(api_client):
-    applicant = ApplicantFactory()
+    applicant = ApplicantFactory.create()
     api_client.force_authenticate(applicant)
 
     response = api_client.get(QUEUE_URL)
@@ -37,9 +37,9 @@ def test_applicant_cannot_access_reviewer_queue(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_queue_excludes_drafts(api_client):
-    reviewer = ReviewerFactory()
-    ApplicationFactory(status=Application.Status.DRAFT)  # private to its owner
-    submitted = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    ApplicationFactory.create(status=Application.Status.DRAFT)  # private to its owner
+    submitted = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.get(QUEUE_URL)
@@ -51,9 +51,9 @@ def test_reviewer_queue_excludes_drafts(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_queue_filterable_by_status(api_client):
-    reviewer = ReviewerFactory()
-    submitted = ApplicationFactory(status=Application.Status.SUBMITTED)
-    ApplicationFactory(status=Application.Status.UNDER_REVIEW)
+    reviewer = ReviewerFactory.create()
+    submitted = ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    ApplicationFactory.create(status=Application.Status.UNDER_REVIEW)
     api_client.force_authenticate(reviewer)
 
     response = api_client.get(QUEUE_URL, {"status": Application.Status.SUBMITTED})
@@ -68,8 +68,8 @@ def test_reviewer_queue_filterable_by_status(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_starts_review(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(
@@ -84,8 +84,8 @@ def test_reviewer_starts_review(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_approves_submitted(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(action_url(application.id, "approve"), {}, format="json")
@@ -100,8 +100,8 @@ def test_reviewer_approves_submitted(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_rejects_with_comment(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.UNDER_REVIEW)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.UNDER_REVIEW)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(
@@ -117,8 +117,8 @@ def test_reviewer_rejects_with_comment(api_client):
 
 @pytest.mark.django_db
 def test_reviewer_returns_with_comment(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(
@@ -136,8 +136,8 @@ def test_reviewer_returns_with_comment(api_client):
 
 @pytest.mark.django_db
 def test_reject_without_comment_is_rejected(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(action_url(application.id, "reject"), {}, format="json")
@@ -150,8 +150,8 @@ def test_reject_without_comment_is_rejected(api_client):
 
 @pytest.mark.django_db
 def test_return_without_comment_is_rejected(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(action_url(application.id, "return"), {}, format="json")
@@ -166,8 +166,8 @@ def test_return_without_comment_is_rejected(api_client):
 def test_reviewer_cannot_act_on_draft(api_client):
     # A draft is not in the reviewer queue, so it is invisible → 404, not 400.
     # This is stronger than §8.3's "approve draft → 400": drafts stay private.
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.DRAFT)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.DRAFT)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(action_url(application.id, "approve"), {}, format="json")
@@ -180,8 +180,8 @@ def test_reviewer_cannot_act_on_draft(api_client):
 
 @pytest.mark.django_db
 def test_start_review_on_under_review_is_invalid_transition(api_client):
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.UNDER_REVIEW)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.UNDER_REVIEW)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(
@@ -202,8 +202,8 @@ def test_start_review_on_under_review_is_invalid_transition(api_client):
 def test_commented_transition_on_terminal_app_is_invalid(api_client, action_name):
     # A valid comment passes the serializer, so the service is reached and rejects
     # the transition on a terminal (APPROVED) application → invalid_transition.
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.APPROVED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.APPROVED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(
@@ -223,7 +223,7 @@ def test_commented_transition_on_terminal_app_is_invalid(api_client, action_name
 def test_post_to_reviewer_queue_is_method_not_allowed(api_client):
     # The read-only queue rejects writes with 405, still wrapped in the contract
     # envelope rather than DRF's bare {"detail": ...}.
-    reviewer = ReviewerFactory()
+    reviewer = ReviewerFactory.create()
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(QUEUE_URL, {}, format="json")
@@ -236,8 +236,8 @@ def test_post_to_reviewer_queue_is_method_not_allowed(api_client):
 def test_approving_terminal_application_is_invalid_transition(api_client):
     # The genuine 400 invalid_transition path: a visible (non-draft) application
     # in a state the transition does not allow.
-    reviewer = ReviewerFactory()
-    application = ApplicationFactory(status=Application.Status.APPROVED)
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.APPROVED)
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(action_url(application.id, "approve"), {}, format="json")

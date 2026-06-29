@@ -18,8 +18,8 @@ from .factories import ReviewerFactory
 
 @pytest.mark.django_db
 def test_applicant_cannot_approve_via_direct_api_call(api_client):
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(applicant)
 
     response = api_client.post(
@@ -41,8 +41,8 @@ def test_applicant_cannot_approve_via_direct_api_call(api_client):
     ["start-review", "approve", "reject", "return"],
 )
 def test_applicant_is_forbidden_from_every_reviewer_transition(api_client, action_name):
-    applicant = ApplicantFactory()
-    application = ApplicationFactory(status=Application.Status.SUBMITTED)
+    applicant = ApplicantFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
     api_client.force_authenticate(applicant)
 
     response = api_client.post(
@@ -60,7 +60,7 @@ def test_applicant_is_forbidden_from_every_reviewer_transition(api_client, actio
 @pytest.mark.django_db
 def test_reviewer_cannot_create_application(api_client):
     # The applicant create endpoint is gated by IsApplicant; a reviewer is rejected.
-    reviewer = ReviewerFactory()
+    reviewer = ReviewerFactory.create()
     api_client.force_authenticate(reviewer)
 
     response = api_client.post(

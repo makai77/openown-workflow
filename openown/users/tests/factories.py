@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from factory import Faker
 from factory import post_generation
 from factory.django import DjangoModelFactory
 
 from openown.users.models import User
 
+if TYPE_CHECKING:
+    from factory.declarations import BaseDeclaration
+
 
 class UserFactory(DjangoModelFactory[User]):
-    email = Faker("email")
+    # Widen the declared type so role subclasses can override `email` with a
+    # Sequence (both Faker and Sequence are BaseDeclaration subclasses).
+    email: BaseDeclaration = Faker("email")
     name = Faker("name")
 
     @post_generation

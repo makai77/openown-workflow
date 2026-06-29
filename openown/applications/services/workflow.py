@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -7,8 +11,11 @@ from .exceptions import CommentRequired
 from .exceptions import InvalidTransition
 from .exceptions import WorkflowPermissionDenied
 
+if TYPE_CHECKING:
+    from openown.users.models import User
 
-def submit_application(*, application: Application, actor) -> Application:
+
+def submit_application(*, application: Application, actor: User) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
         _require_owner(application=application, actor=actor)
@@ -25,7 +32,7 @@ def submit_application(*, application: Application, actor) -> Application:
         )
 
 
-def start_review_application(*, application: Application, actor) -> Application:
+def start_review_application(*, application: Application, actor: User) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
         _require_reviewer(actor=actor)
@@ -41,7 +48,7 @@ def start_review_application(*, application: Application, actor) -> Application:
         )
 
 
-def approve_application(*, application: Application, actor) -> Application:
+def approve_application(*, application: Application, actor: User) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
         _require_reviewer(actor=actor)
@@ -58,7 +65,12 @@ def approve_application(*, application: Application, actor) -> Application:
         )
 
 
-def reject_application(*, application: Application, actor, comment: str) -> Application:
+def reject_application(
+    *,
+    application: Application,
+    actor: User,
+    comment: str,
+) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
         _require_reviewer(actor=actor)
@@ -77,7 +89,12 @@ def reject_application(*, application: Application, actor, comment: str) -> Appl
         )
 
 
-def return_application(*, application: Application, actor, comment: str) -> Application:
+def return_application(
+    *,
+    application: Application,
+    actor: User,
+    comment: str,
+) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
         _require_reviewer(actor=actor)
@@ -109,12 +126,16 @@ def _locked_application(application: Application) -> Application:
     return Application.objects.select_for_update().get(pk=application.pk)
 
 
-def _require_owner(*, application: Application, actor) -> None:
-    if not actor.is_authenticated or application.owner_id != actor.id:
+def _require_owner(*, application: Application, actor: User) -> None:
+    # `owner_id` is Django's auto-generated FK column accessor — compared directly
+    # so we never fetch the owner row (preserving the query budget). Pyrefly lacks
+    # Django ORM model introspection and can't see it; mypy's django-stubs plugin
+    # can, so this suppression is pyrefly-only.
+    if not actor.is_authenticated or application.owner_id != actor.id:  # pyrefly: ignore[missing-attribute]
         raise WorkflowPermissionDenied("Only the owner can perform this action.")
 
 
-def _require_reviewer(*, actor) -> None:
+def _require_reviewer(*, actor: User) -> None:
     if not actor.is_authenticated or not actor.is_reviewer:
         raise WorkflowPermissionDenied("Only reviewers can perform this action.")
 
@@ -139,7 +160,7 @@ def _require_comment(*, comment: str) -> str:
 def _transition(
     *,
     application: Application,
-    actor,
+    actor: User,
     to_status: str,
     comment: str = "",
     submitted: bool = False,

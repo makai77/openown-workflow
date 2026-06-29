@@ -11,7 +11,7 @@ from .factories import ReviewerFactory
 
 @pytest.mark.django_db
 def test_application_str():
-    app = ApplicationFactory(title="My Grant Application")
+    app = ApplicationFactory.create(title="My Grant Application")
     assert str(app) == "My Grant Application"
 
 
@@ -29,7 +29,7 @@ def test_application_str():
 def test_draft_or_returned_is_editable(status):
     # A returned application goes back to the owner to revise — see the workflow
     # spec ("RETURNED: owner can re-submit").
-    app = ApplicationFactory(status=status)
+    app = ApplicationFactory.create(status=status)
     assert app.is_editable_by_applicant is True
 
 
@@ -44,7 +44,7 @@ def test_draft_or_returned_is_editable(status):
     ],
 )
 def test_in_review_or_terminal_not_editable(status):
-    app = ApplicationFactory(status=status)
+    app = ApplicationFactory.create(status=status)
     assert app.is_editable_by_applicant is False
 
 
@@ -60,7 +60,7 @@ def test_in_review_or_terminal_not_editable(status):
     ],
 )
 def test_is_reviewable_true(status):
-    app = ApplicationFactory(status=status)
+    app = ApplicationFactory.create(status=status)
     assert app.is_reviewable is True
 
 
@@ -75,7 +75,7 @@ def test_is_reviewable_true(status):
     ],
 )
 def test_is_reviewable_false(status):
-    app = ApplicationFactory(status=status)
+    app = ApplicationFactory.create(status=status)
     assert app.is_reviewable is False
 
 
@@ -84,10 +84,10 @@ def test_is_reviewable_false(status):
 
 @pytest.mark.django_db
 def test_for_applicant_filters_own_applications():
-    applicant = ApplicantFactory()
-    other = ApplicantFactory()
-    own = ApplicationFactory(owner=applicant)
-    ApplicationFactory(owner=other)
+    applicant = ApplicantFactory.create()
+    other = ApplicantFactory.create()
+    own = ApplicationFactory.create(owner=applicant)
+    ApplicationFactory.create(owner=other)
 
     qs = Application.objects.for_applicant(applicant)
     assert list(qs) == [own]
@@ -95,9 +95,9 @@ def test_for_applicant_filters_own_applications():
 
 @pytest.mark.django_db
 def test_for_reviewer_queue_excludes_drafts():
-    ApplicationFactory(status=Application.Status.DRAFT)
-    submitted = ApplicationFactory(status=Application.Status.SUBMITTED)
-    under_review = ApplicationFactory(status=Application.Status.UNDER_REVIEW)
+    ApplicationFactory.create(status=Application.Status.DRAFT)
+    submitted = ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    under_review = ApplicationFactory.create(status=Application.Status.UNDER_REVIEW)
 
     ids = set(Application.objects.for_reviewer_queue().values_list("id", flat=True))
     assert submitted.id in ids
@@ -106,7 +106,7 @@ def test_for_reviewer_queue_excludes_drafts():
 
 @pytest.mark.django_db
 def test_with_owner_selects_related():
-    ApplicationFactory()
+    ApplicationFactory.create()
     app = Application.objects.with_owner().first()
     assert app is not None
     assert app.owner_id is not None
@@ -114,9 +114,9 @@ def test_with_owner_selects_related():
 
 @pytest.mark.django_db
 def test_with_audit_trail_prefetches():
-    app = ApplicationFactory(status=Application.Status.SUBMITTED)
-    reviewer = ReviewerFactory()
-    ApplicationAuditLogFactory(
+    app = ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    ApplicationAuditLogFactory.create(
         application=app,
         actor=reviewer,
         from_status=Application.Status.DRAFT,

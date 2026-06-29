@@ -30,8 +30,8 @@ from .factories import ReviewerFactory
 
 @pytest.mark.django_db
 def test_owner_submits_draft_becomes_submitted():
-    applicant = ApplicantFactory()
-    app = ApplicationFactory(owner=applicant, status=Application.Status.DRAFT)
+    applicant = ApplicantFactory.create()
+    app = ApplicationFactory.create(owner=applicant, status=Application.Status.DRAFT)
 
     result = submit_application(application=app, actor=applicant)
 
@@ -40,14 +40,15 @@ def test_owner_submits_draft_becomes_submitted():
     assert result.submitted_at is not None
     assert result.audit_logs.count() == 1
     log = result.audit_logs.first()
+    assert log is not None
     assert log.from_status == Application.Status.DRAFT
     assert log.to_status == Application.Status.SUBMITTED
 
 
 @pytest.mark.django_db
 def test_non_owner_cannot_submit_draft():
-    other_applicant = ApplicantFactory()
-    app = ApplicationFactory(status=Application.Status.DRAFT)
+    other_applicant = ApplicantFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.DRAFT)
     initial_count = app.audit_logs.count()
 
     with pytest.raises(WorkflowPermissionDenied):
@@ -62,8 +63,8 @@ def test_non_owner_cannot_submit_draft():
 def test_owner_can_resubmit_returned_application():
     # A reviewer-returned application can be re-submitted by its owner — see the
     # workflow spec ("RETURNED: owner can re-submit").
-    applicant = ApplicantFactory()
-    app = ApplicationFactory(owner=applicant, status=Application.Status.RETURNED)
+    applicant = ApplicantFactory.create()
+    app = ApplicationFactory.create(owner=applicant, status=Application.Status.RETURNED)
 
     result = submit_application(application=app, actor=applicant)
 
@@ -71,14 +72,18 @@ def test_owner_can_resubmit_returned_application():
     assert result.status == Application.Status.SUBMITTED
     assert result.audit_logs.count() == 1
     log = result.audit_logs.first()
+    assert log is not None
     assert log.from_status == Application.Status.RETURNED
     assert log.to_status == Application.Status.SUBMITTED
 
 
 @pytest.mark.django_db
 def test_owner_cannot_submit_in_review_or_terminal():
-    applicant = ApplicantFactory()
-    app = ApplicationFactory(owner=applicant, status=Application.Status.SUBMITTED)
+    applicant = ApplicantFactory.create()
+    app = ApplicationFactory.create(
+        owner=applicant,
+        status=Application.Status.SUBMITTED,
+    )
 
     with pytest.raises(InvalidTransition):
         submit_application(application=app, actor=applicant)
@@ -93,8 +98,8 @@ def test_owner_cannot_submit_in_review_or_terminal():
 
 @pytest.mark.django_db
 def test_reviewer_starts_review_from_submitted():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.SUBMITTED)
 
     result = start_review_application(application=app, actor=reviewer)
 
@@ -105,8 +110,8 @@ def test_reviewer_starts_review_from_submitted():
 
 @pytest.mark.django_db
 def test_reviewer_cannot_start_review_from_draft():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.DRAFT)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.DRAFT)
 
     with pytest.raises(InvalidTransition):
         start_review_application(application=app, actor=reviewer)
@@ -125,8 +130,8 @@ def test_reviewer_cannot_start_review_from_draft():
     [Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW],
 )
 def test_reviewer_approves_submitted_or_under_review(from_status):
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=from_status)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=from_status)
 
     result = approve_application(application=app, actor=reviewer)
 
@@ -138,8 +143,11 @@ def test_reviewer_approves_submitted_or_under_review(from_status):
 
 @pytest.mark.django_db
 def test_applicant_cannot_approve():
-    applicant = ApplicantFactory()
-    app = ApplicationFactory(owner=applicant, status=Application.Status.SUBMITTED)
+    applicant = ApplicantFactory.create()
+    app = ApplicationFactory.create(
+        owner=applicant,
+        status=Application.Status.SUBMITTED,
+    )
 
     with pytest.raises(WorkflowPermissionDenied):
         approve_application(application=app, actor=applicant)
@@ -158,8 +166,8 @@ def test_applicant_cannot_approve():
     [Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW],
 )
 def test_reviewer_rejects_submitted_or_under_review_with_comment(from_status):
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=from_status)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=from_status)
 
     result = reject_application(
         application=app,
@@ -171,6 +179,7 @@ def test_reviewer_rejects_submitted_or_under_review_with_comment(from_status):
     assert result.status == Application.Status.REJECTED
     assert result.audit_logs.count() == 1
     log = result.audit_logs.first()
+    assert log is not None
     assert log.from_status == from_status
     assert log.to_status == Application.Status.REJECTED
     assert log.comment == "Not compliant."
@@ -178,8 +187,8 @@ def test_reviewer_rejects_submitted_or_under_review_with_comment(from_status):
 
 @pytest.mark.django_db
 def test_reviewer_cannot_reject_without_comment():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.SUBMITTED)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.SUBMITTED)
 
     with pytest.raises(CommentRequired):
         reject_application(application=app, actor=reviewer, comment="   ")
@@ -198,8 +207,8 @@ def test_reviewer_cannot_reject_without_comment():
     [Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW],
 )
 def test_reviewer_returns_submitted_or_under_review_with_comment(from_status):
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=from_status)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=from_status)
 
     result = return_application(
         application=app,
@@ -212,6 +221,7 @@ def test_reviewer_returns_submitted_or_under_review_with_comment(from_status):
     assert result.reviewed_at is not None
     assert result.audit_logs.count() == 1
     log = result.audit_logs.first()
+    assert log is not None
     assert log.from_status == from_status
     assert log.to_status == Application.Status.RETURNED
     assert log.comment == "Needs revision."
@@ -219,8 +229,8 @@ def test_reviewer_returns_submitted_or_under_review_with_comment(from_status):
 
 @pytest.mark.django_db
 def test_reviewer_cannot_return_without_comment():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.UNDER_REVIEW)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.UNDER_REVIEW)
 
     with pytest.raises(CommentRequired):
         return_application(application=app, actor=reviewer, comment="")
@@ -235,8 +245,8 @@ def test_reviewer_cannot_return_without_comment():
 
 @pytest.mark.django_db
 def test_cannot_mutate_approved_application():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.APPROVED)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.APPROVED)
     prior_log_count = app.audit_logs.count()
 
     with pytest.raises(InvalidTransition):
@@ -249,8 +259,8 @@ def test_cannot_mutate_approved_application():
 
 @pytest.mark.django_db
 def test_cannot_mutate_rejected_application():
-    reviewer = ReviewerFactory()
-    app = ApplicationFactory(status=Application.Status.REJECTED)
+    reviewer = ReviewerFactory.create()
+    app = ApplicationFactory.create(status=Application.Status.REJECTED)
     prior_log_count = app.audit_logs.count()
 
     with pytest.raises(InvalidTransition):

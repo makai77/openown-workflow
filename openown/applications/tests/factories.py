@@ -19,7 +19,7 @@ class ReviewerFactory(UserFactory):
     role = User.Role.REVIEWER
 
 
-class ApplicationFactory(factory.django.DjangoModelFactory):
+class ApplicationFactory(factory.django.DjangoModelFactory[Application]):
     owner = factory.SubFactory(ApplicantFactory)
     title = factory.Sequence(lambda n: f"Application {n}")
     category = Application.Category.GENERAL
@@ -31,7 +31,9 @@ class ApplicationFactory(factory.django.DjangoModelFactory):
         model = Application
 
 
-class ApplicationAuditLogFactory(factory.django.DjangoModelFactory):
+class ApplicationAuditLogFactory(
+    factory.django.DjangoModelFactory[ApplicationAuditLog],
+):
     application = factory.SubFactory(ApplicationFactory)
     actor = factory.SubFactory(ReviewerFactory)
     from_status = Application.Status.SUBMITTED

@@ -12,20 +12,20 @@ def test_user_get_absolute_url(user: User):
 
 @pytest.mark.django_db
 def test_user_is_applicant_true():
-    user = UserFactory(role=User.Role.APPLICANT)
+    user = UserFactory.create(role=User.Role.APPLICANT)
     assert user.is_applicant is True
     assert user.is_reviewer is False
 
 
 @pytest.mark.django_db
 def test_user_is_reviewer_true():
-    user = UserFactory(role=User.Role.REVIEWER)
+    user = UserFactory.create(role=User.Role.REVIEWER)
     assert user.is_reviewer is True
     assert user.is_applicant is False
 
 
 @pytest.mark.django_db
 def test_user_role_defaults_to_applicant():
-    user = UserFactory()
+    user = UserFactory.create()
     assert user.role == User.Role.APPLICANT
     assert user.is_applicant is True
