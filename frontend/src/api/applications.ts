@@ -13,6 +13,11 @@ export type ApplicationStatus =
 
 export type Category = "GENERAL" | "COMPLIANCE" | "FINANCE" | "OPERATIONS";
 
+// The reviewer actions the backend reports as currently legal for an application
+// (ApplicationDetailSerializer.available_actions). The frontend renders its
+// decision surface from this list — it never derives actions from status itself.
+export type WorkflowAction = "start_review" | "approve" | "reject" | "return";
+
 export interface ApplicationListItem {
   id: number;
   owner_email: string;
@@ -40,6 +45,9 @@ export interface ApplicationDetail extends ApplicationListItem {
   owner: number;
   description: string;
   audit_logs: AuditLogEntry[];
+  // Detail-only: present on single-object reads and transition responses, absent
+  // from the list serializer. Empty when the current actor has no legal action.
+  available_actions: WorkflowAction[];
 }
 
 export interface CreateApplicationPayload {

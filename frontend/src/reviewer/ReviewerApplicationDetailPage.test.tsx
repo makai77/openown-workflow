@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 
 import { ApiError } from "@/api/client";
-import type { ApplicationDetail, AuditLogEntry } from "@/api/applications";
+import type {
+  ApplicationDetail,
+  AuditLogEntry,
+  WorkflowAction,
+} from "@/api/applications";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { ReviewerApplicationDetailPage } from "./ReviewerApplicationDetailPage";
 
@@ -23,6 +27,14 @@ const mockGet = vi.mocked(getReviewerApplication);
 const mockApprove = vi.mocked(approveApplication);
 const mockReject = vi.mocked(rejectApplication);
 
+// A SUBMITTED application: the backend reports all four actions as legal.
+const SUBMITTED_ACTIONS: WorkflowAction[] = [
+  "start_review",
+  "approve",
+  "reject",
+  "return",
+];
+
 function makeDetail(overrides: Partial<ApplicationDetail> = {}): ApplicationDetail {
   return {
     id: 7,
@@ -38,6 +50,7 @@ function makeDetail(overrides: Partial<ApplicationDetail> = {}): ApplicationDeta
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     audit_logs: [],
+    available_actions: SUBMITTED_ACTIONS,
     ...overrides,
   };
 }
@@ -70,35 +83,101 @@ function renderDetail() {
 }
 
 describe("ReviewerApplicationDetailPage", () => {
+  it("renders only the buttons in available_actions (UNDER_REVIEW: no start review)", async () => {
+    mockGet.mockResolvedValueOnce(
+      makeDetail({
+        status: "UNDER_REVIEW",
+        available_actions: ["approve", "reject", "return"],
+      }),
+    );
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Grant request" });
+
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Return for changes" }),
+    ).toBeInTheDocument();
+    // start_review is absent from available_actions, so its button must not show.
+    expect(
+      screen.queryByRole("button", { name: "Start review" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders a resolved summary and no action buttons when available_actions is empty", async () => {
+    mockGet.mockResolvedValueOnce(
+      makeDetail({
+        status: "APPROVED",
+        reviewed_at: "2026-01-02T00:00:00Z",
+        available_actions: [],
+        audit_logs: [makeAudit({ to_status: "APPROVED" })],
+      }),
+    );
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Grant request" });
+
+    // Resolved summary derived from the latest audit entry — no Decision panel.
+    expect(screen.getByTestId("resolved-summary")).toHaveTextContent(
+      /Approved by Riya Reviewer/,
+    );
+    expect(screen.queryByRole("heading", { name: "Decision" })).not.toBeInTheDocument();
+    for (const name of ["Start review", "Approve", "Reject", "Return for changes"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+  });
+
   it("blocks reject until a comment is entered (input validation only)", async () => {
     mockGet.mockResolvedValueOnce(makeDetail());
     renderDetail();
 
     await screen.findByRole("heading", { name: "Grant request" });
 
-    // Empty comment: the action is blocked client-side as input validation and
-    // never reaches the API.
+    // Empty comment: blocked client-side as input validation. No dialog opens and
+    // the API is never called.
     await userEvent.click(screen.getByRole("button", { name: "Reject" }));
     expect(await screen.findByText("A comment is required")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("alertdialog"),
+    ).not.toBeInTheDocument();
     expect(mockReject).not.toHaveBeenCalled();
+  });
 
-    // With a comment, the transition fires with (id, comment).
+  it("confirms before rejecting, then fires the transition with the comment", async () => {
+    mockGet.mockResolvedValueOnce(makeDetail());
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Grant request" });
+
     await userEvent.type(
       screen.getByLabelText(/Comment/),
       "Insufficient detail",
     );
+    // With a comment, Reject opens the irreversible-action confirmation first.
+    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/can't be undone/i),
+    ).toBeInTheDocument();
+    expect(mockReject).not.toHaveBeenCalled();
+
+    // Confirming inside the dialog fires the transition with (id, comment).
     mockReject.mockResolvedValueOnce(
       makeDetail({
         status: "REJECTED",
+        available_actions: [],
         audit_logs: [makeAudit({ to_status: "REJECTED" })],
       }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Reject" }),
+    );
     expect(mockReject).toHaveBeenCalledWith(7, "Insufficient detail");
   });
 
   it("surfaces a backend rejection as a normal inline error", async () => {
-    mockGet.mockResolvedValueOnce(makeDetail({ status: "APPROVED" }));
+    mockGet.mockResolvedValueOnce(makeDetail({ status: "SUBMITTED" }));
     mockApprove.mockRejectedValueOnce(
       new ApiError(400, {
         code: "invalid_transition",
@@ -124,6 +203,7 @@ describe("ReviewerApplicationDetailPage", () => {
       makeDetail({
         status: "APPROVED",
         reviewed_at: "2026-01-02T00:00:00Z",
+        available_actions: [],
         audit_logs: [makeAudit()],
       }),
     );

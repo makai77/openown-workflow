@@ -36,6 +36,8 @@ function makeDetail(overrides: Partial<ApplicationDetail> = {}): ApplicationDeta
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     audit_logs: [],
+    // Applicant-side detail: the reviewer-action list is always empty here.
+    available_actions: [],
     ...overrides,
   };
 }
