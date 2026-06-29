@@ -309,13 +309,32 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Open Ownership Workflow API",
     "DESCRIPTION": (
         "REST API for the Open Ownership Submission & Approval Workflow. "
-        "Manages application submission, reviewer assignment, status transitions "
-        "(submit → under_review → approved / rejected / returned_for_revision), "
-        "and per-application audit trail."
+        "Two roles share one object: an **applicant** creates, edits and submits "
+        "their own draft applications; a **reviewer** works the submitted queue and "
+        "moves an application through the status workflow "
+        "(submit → under_review → approved / rejected / returned). Every legal "
+        "transition writes exactly one row to the per-application audit trail; every "
+        "illegal or unauthorized one is rejected and writes none. `status`, `owner` "
+        "and timestamps are backend-assigned and never trusted from the client."
     ),
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": "/api/",
+    "TAGS": [
+        {
+            "name": "Applications",
+            "description": "Applicant-facing endpoints: create, edit and submit own drafts.",
+        },
+        {
+            "name": "Reviewer",
+            "description": (
+                "Reviewer-facing endpoints: the submitted queue plus the "
+                "start-review / approve / reject / return transitions."
+            ),
+        },
+    ],
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
