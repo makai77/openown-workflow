@@ -1,17 +1,21 @@
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.http import Http404
 from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 
 
-def _code_for(exc: exceptions.APIException) -> str:
-    # Map DRF exception types onto the project error contract (Playbook §6.4).
-    # WorkflowError never reaches here — the ViewSets catch it and respond via
-    # workflow_error_response — so this only covers framework-level errors.
+def _code_for(exc) -> str:
+    # Map exception types onto the project error contract (Playbook §6.4). DRF
+    # normalises Http404 -> NotFound and Django's PermissionDenied -> 403 inside
+    # its handler, but it passes us the *original* exc, so we recognise those
+    # forms here too. WorkflowError never reaches here — the ViewSets catch it and
+    # respond via workflow_error_response — so this only covers framework errors.
     if isinstance(exc, (exceptions.NotAuthenticated, exceptions.AuthenticationFailed)):
         return "not_authenticated"
-    if isinstance(exc, exceptions.PermissionDenied):
+    if isinstance(exc, (exceptions.PermissionDenied, DjangoPermissionDenied)):
         return "permission_denied"
-    if isinstance(exc, exceptions.NotFound):
+    if isinstance(exc, (exceptions.NotFound, Http404)):
         return "not_found"
     if isinstance(exc, exceptions.ValidationError):
         return "validation_error"
