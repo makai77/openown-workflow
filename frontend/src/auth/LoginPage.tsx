@@ -30,9 +30,10 @@ export function LoginPage() {
     setFormError(null);
     try {
       const user = await login(values.email, values.password);
-      navigate(user.role === "REVIEWER" ? "/reviewer" : "/applications", {
-        replace: true,
-      });
+      navigate(
+        user.role === "REVIEWER" ? "/reviewer/applications" : "/applications",
+        { replace: true },
+      );
     } catch (error) {
       setFormError(
         error instanceof ApiError && error.status === 400

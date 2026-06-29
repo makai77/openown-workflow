@@ -44,3 +44,12 @@ export const applicationFormSchema = z.object({
 });
 
 export type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
+
+// Reject / return decision. The backend requires a non-blank comment for both
+// (CommentRequired); this mirrors that as input validation only — it is never
+// the reason the transition is legal or not. The backend remains the authority.
+export const reviewDecisionSchema = z.object({
+  comment: z.string().trim().min(1, "A comment is required"),
+});
+
+export type ReviewDecisionValues = z.infer<typeof reviewDecisionSchema>;

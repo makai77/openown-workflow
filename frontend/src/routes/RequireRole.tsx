@@ -12,7 +12,7 @@ export function RequireRole({ allow }: { allow: Role }) {
   if (user && user.role !== allow) {
     return (
       <Navigate
-        to={user.role === "REVIEWER" ? "/reviewer" : "/applications"}
+        to={user.role === "REVIEWER" ? "/reviewer/applications" : "/applications"}
         replace
       />
     );

@@ -13,10 +13,15 @@ export function AppLayout() {
     navigate("/login", { replace: true });
   }
 
+  // The brand link points at the signed-in role's home so it never bounces a
+  // reviewer through the applicant route guard.
+  const home =
+    user?.role === "REVIEWER" ? "/reviewer/applications" : "/applications";
+
   return (
     <div className="min-h-svh">
       <header className="flex items-center justify-between border-b px-4 py-3">
-        <Link to="/applications" className="font-semibold">
+        <Link to={home} className="font-semibold">
           Open Ownership
         </Link>
         <div className="flex items-center gap-3 text-sm">
