@@ -15,6 +15,37 @@ if TYPE_CHECKING:
     from openown.users.models import User
 
 
+# The single authority for which statuses each reviewer action is legal from.
+# Both the transition functions (via _require_status) and available_actions()
+# read from this mapping — the rule lives in exactly one place and cannot drift.
+# Insertion order is the order available_actions() returns the keys in.
+_REVIEWER_ACTION_STATUSES: dict[str, set[str]] = {
+    "start_review": {Application.Status.SUBMITTED},
+    "approve": {Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+    "reject": {Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+    "return": {Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+}
+
+# Public, ordered tuple of the reviewer-action keys — the closed vocabulary that
+# available_actions() can return and that the OpenAPI schema enumerates.
+REVIEWER_ACTION_KEYS: tuple[str, ...] = tuple(_REVIEWER_ACTION_STATUSES)
+
+
+def available_actions(*, application: Application, actor: User) -> list[str]:
+    # The single read-only authority for "what can this actor do to this
+    # application right now". Reuses the same predicates the transition functions
+    # use (_is_reviewer + _REVIEWER_ACTION_STATUSES), so it can never disagree
+    # with what those functions will actually allow. Pure: no DB writes, no
+    # side effects — operates on the already-loaded object + actor.
+    if not _is_reviewer(actor=actor):
+        return []
+    return [
+        action
+        for action, allowed in _REVIEWER_ACTION_STATUSES.items()
+        if application.status in allowed
+    ]
+
+
 def submit_application(*, application: Application, actor: User) -> Application:
     with transaction.atomic():
         application = _locked_application(application)
@@ -38,7 +69,7 @@ def start_review_application(*, application: Application, actor: User) -> Applic
         _require_reviewer(actor=actor)
         _require_status(
             application=application,
-            allowed={Application.Status.SUBMITTED},
+            allowed=_REVIEWER_ACTION_STATUSES["start_review"],
             message="Only submitted applications can be moved under review.",
         )
         return _transition(
@@ -54,7 +85,7 @@ def approve_application(*, application: Application, actor: User) -> Application
         _require_reviewer(actor=actor)
         _require_status(
             application=application,
-            allowed={Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+            allowed=_REVIEWER_ACTION_STATUSES["approve"],
             message="Only submitted or under-review applications can be approved.",
         )
         return _transition(
@@ -76,7 +107,7 @@ def reject_application(
         _require_reviewer(actor=actor)
         _require_status(
             application=application,
-            allowed={Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+            allowed=_REVIEWER_ACTION_STATUSES["reject"],
             message="Only submitted or under-review applications can be rejected.",
         )
         comment = _require_comment(comment=comment)
@@ -100,7 +131,7 @@ def return_application(
         _require_reviewer(actor=actor)
         _require_status(
             application=application,
-            allowed={Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW},
+            allowed=_REVIEWER_ACTION_STATUSES["return"],
             message="Only submitted or under-review applications can be returned.",
         )
         comment = _require_comment(comment=comment)
@@ -135,8 +166,15 @@ def _require_owner(*, application: Application, actor: User) -> None:
         raise WorkflowPermissionDenied("Only the owner can perform this action.")
 
 
+def _is_reviewer(*, actor: User) -> bool:
+    # The boolean predicate behind reviewer access. _require_reviewer wraps it for
+    # the transition functions; available_actions() reads it directly. One rule,
+    # two readers — they cannot disagree on who is a reviewer.
+    return actor.is_authenticated and actor.is_reviewer
+
+
 def _require_reviewer(*, actor: User) -> None:
-    if not actor.is_authenticated or not actor.is_reviewer:
+    if not _is_reviewer(actor=actor):
         raise WorkflowPermissionDenied("Only reviewers can perform this action.")
 
 

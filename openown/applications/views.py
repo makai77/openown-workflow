@@ -160,7 +160,12 @@ class ApplicationViewSet(
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         application = _detail_queryset().get(pk=instance.pk)
-        return Response(ApplicationDetailSerializer(application).data)
+        return Response(
+            ApplicationDetailSerializer(
+                application,
+                context=self.get_serializer_context(),
+            ).data,
+        )
 
     @extend_schema(
         summary="Submit a draft for review",
@@ -193,7 +198,12 @@ class ApplicationViewSet(
         # Re-read through the detail queryset so the response carries the new audit
         # row without a per-row lazy load.
         application = _detail_queryset().get(pk=application.pk)
-        return Response(ApplicationDetailSerializer(application).data)
+        return Response(
+            ApplicationDetailSerializer(
+                application,
+                context=self.get_serializer_context(),
+            ).data,
+        )
 
 
 @extend_schema(tags=["Reviewer"])
@@ -234,7 +244,12 @@ class ReviewerApplicationViewSet(viewsets.ReadOnlyModelViewSet):
 
     def _transition_response(self, application: Application) -> Response:
         application = _detail_queryset().get(pk=application.pk)
-        return Response(ApplicationDetailSerializer(application).data)
+        return Response(
+            ApplicationDetailSerializer(
+                application,
+                context=self.get_serializer_context(),
+            ).data,
+        )
 
     @extend_schema(
         summary="Start review of a submitted application",

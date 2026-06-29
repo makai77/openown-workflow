@@ -1,7 +1,10 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import Application
 from .models import ApplicationAuditLog
+from .services.workflow import REVIEWER_ACTION_KEYS
+from .services.workflow import available_actions
 
 
 class ApplicationCreateSerializer(serializers.ModelSerializer[Application]):
@@ -75,6 +78,7 @@ class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
     # .with_owner().with_audit_trail() so this stays a fixed-query read.
     audit_logs = ApplicationAuditLogSerializer(many=True, read_only=True)
     owner_email = serializers.EmailField(source="owner.email", read_only=True)
+    available_actions = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
@@ -92,8 +96,25 @@ class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
             "created_at",
             "updated_at",
             "audit_logs",
+            "available_actions",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.ChoiceField(choices=list(REVIEWER_ACTION_KEYS)),
+        ),
+    )
+    def get_available_actions(self, obj: Application) -> list[str]:
+        # The reviewer-action keys the current actor may invoke on this object,
+        # straight from the workflow service — the frontend renders these and
+        # encodes zero rules of its own. Pure: it reads only the already-loaded
+        # object and request.user, so it adds no query. Absent request (e.g.
+        # schema introspection) → empty, never an error.
+        request = self.context.get("request")
+        if request is None:
+            return []
+        return available_actions(application=obj, actor=request.user)
 
 
 class TransitionCommentSerializer(serializers.Serializer):

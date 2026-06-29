@@ -249,3 +249,68 @@ def test_approving_terminal_application_is_invalid_transition(api_client):
     # No transition row was written for the rejected approve (the seed APPROVED
     # state was created by the factory, not by a transition).
     assert application.audit_logs.count() == 0
+
+
+# ── available_actions (server-driven UI) ────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_detail_exposes_available_actions_for_submitted(api_client):
+    # The detail read carries the server's verdict on what the reviewer may do, so
+    # the frontend renders buttons from it instead of re-deriving them from status.
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    api_client.force_authenticate(reviewer)
+
+    response = api_client.get(f"/api/reviewer/applications/{application.id}/")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.data["available_actions"] == [
+        "start_review",
+        "approve",
+        "reject",
+        "return",
+    ]
+
+
+@pytest.mark.django_db
+def test_detail_available_actions_empty_for_terminal(api_client):
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.APPROVED)
+    api_client.force_authenticate(reviewer)
+
+    response = api_client.get(f"/api/reviewer/applications/{application.id}/")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.data["available_actions"] == []
+
+
+@pytest.mark.django_db
+def test_transition_response_carries_fresh_available_actions(api_client):
+    # After start-review the status is UNDER_REVIEW; the same response must already
+    # report the actions legal from the *new* state (no separate refetch needed).
+    reviewer = ReviewerFactory.create()
+    application = ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    api_client.force_authenticate(reviewer)
+
+    response = api_client.post(
+        action_url(application.id, "start-review"), {}, format="json",
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.data["available_actions"] == ["approve", "reject", "return"]
+
+
+@pytest.mark.django_db
+def test_queue_list_omits_available_actions(api_client):
+    # available_actions is detail-only — the lightweight list serializer must not
+    # carry it (and must not pay the per-row cost of computing it).
+    reviewer = ReviewerFactory.create()
+    ApplicationFactory.create(status=Application.Status.SUBMITTED)
+    api_client.force_authenticate(reviewer)
+
+    response = api_client.get(QUEUE_URL)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.data["results"]
+    assert "available_actions" not in response.data["results"][0]
