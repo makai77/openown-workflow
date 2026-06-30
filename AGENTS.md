@@ -91,5 +91,5 @@ Best targets: `applications/services/`, `applications/permissions.py`, `tools/ag
 
 ## Deeper references (read on demand, not loaded by default)
 
-- `OpenOwnership_Assignment_B_Engineering_Playbook.md` — full build spec, code, schema, tests, deploy.
-- `Engineering_Principles_and_Architecture.md` — the reasoning behind every rule above.
+- `engineering/OpenOwnership_Assignment_B_Engineering_Playbook.md` — full build spec, code, schema, tests, deploy.
+- `engineering/Engineering_Principles_and_Architecture.md` — the reasoning behind every rule above.

@@ -7,7 +7,7 @@ Update it at the start of each phase — this is the single source of "what are 
 
 Domain model is in place and committed. Now build the state machine.
 
-Spec: `OpenOwnership_Assignment_B_Engineering_Playbook.md` §5 (workflow service) + §8.2 (test matrix).
+Spec: `engineering/OpenOwnership_Assignment_B_Engineering_Playbook.md` §5 (workflow service) + §8.2 (test matrix).
 
 Done when:
 - `openown/applications/services/exceptions.py` — `WorkflowError`, `InvalidTransition`,

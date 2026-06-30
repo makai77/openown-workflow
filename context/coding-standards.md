@@ -1,7 +1,7 @@
 # Coding Standards
 
 `AGENTS.md` lists the architecture non-negotiables. This adds the detail behind them.
-Full code: `OpenOwnership_Assignment_B_Engineering_Playbook.md`. Full rationale: `Engineering_Principles_and_Architecture.md`.
+Full code: `engineering/OpenOwnership_Assignment_B_Engineering_Playbook.md`. Full rationale: `engineering/Engineering_Principles_and_Architecture.md`.
 
 ## Where logic lives
 

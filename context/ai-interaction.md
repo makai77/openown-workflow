@@ -16,8 +16,8 @@ How to work here. Architecture rules and commands are in `AGENTS.md`.
 
 - Name the Playbook section you're implementing ("Playbook §5.2") in your plan first.
 - For anything beyond a trivial edit, state the plan and get agreement before coding.
-- Read the relevant `OpenOwnership_Assignment_B_Engineering_Playbook.md` section for
-  exact code, and `Engineering_Principles_and_Architecture.md` for the rationale.
+- Read the relevant `engineering/OpenOwnership_Assignment_B_Engineering_Playbook.md` section for
+  exact code, and `engineering/Engineering_Principles_and_Architecture.md` for the rationale.
   Don't reinvent a pattern the spec already defines. Use Context7 to verify API details
   before writing; don't rely on training-data memory for version-sensitive calls.
 

@@ -23,7 +23,7 @@ After running:
    - What behavior those lines implement (read the file if needed)
    - What test is needed to cover them
 3. **Coverage verdict** — did it hold, rise, or drop since the last known baseline?
-   - Coverage is a ratchet per `Engineering_Principles_and_Architecture.md` §4.4 — it must not drop
+   - Coverage is a ratchet per `engineering/Engineering_Principles_and_Architecture.md` §4.4 — it must not drop
    - If it dropped, identify which new code lacks tests before this slice can be committed
 
 Do not treat 100% as the goal. The goal is that every transition function, every permission check, every model property, and every error path has at least one test that exercises it.

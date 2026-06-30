@@ -13,8 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Large reference docs — read on demand, NOT imported
 
-- `OpenOwnership_Assignment_B_Engineering_Playbook.md` — full build spec: code, schema, API, tests, deploy
-- `Engineering_Principles_and_Architecture.md` — the why behind every rule
+- `engineering/OpenOwnership_Assignment_B_Engineering_Playbook.md` — full build spec: code, schema, API, tests, deploy
+- `engineering/Engineering_Principles_and_Architecture.md` — the why behind every rule
 
 Open the relevant section when you need exact code or rationale. Name the section
 you're implementing (e.g. "Playbook §5") in your plan before writing code.
