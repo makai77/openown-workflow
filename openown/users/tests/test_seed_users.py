@@ -23,3 +23,9 @@ def test_seed_users_creates_applicant_and_reviewer_idempotently():
     assert User.objects.filter(email="applicant@example.com").count() == 1
     assert User.objects.filter(email="reviewer@example.com").count() == 1
     assert not User.objects.filter(is_superuser=True).exists()
+
+    # The reviewer is staff only so it can open the admin-gated API docs; the
+    # applicant is not. Neither is a superuser, and is_staff grants no model
+    # permissions (none are assigned), so this is docs access, not admin power.
+    assert applicant.is_staff is False
+    assert reviewer.is_staff is True

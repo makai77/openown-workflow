@@ -309,3 +309,7 @@ server-info-secretes.txt.md
 ### Assessment brief — third-party document, not part of the deliverable
 Full-Stack_Developer_Assessment.docx.pdf
 *.docx.pdf
+
+### Deployment runbook — contains environment specifics (server paths, admin URL,
+### domain, contact email). Kept private; available on request, never pushed.
+DEPLOYMENT.md

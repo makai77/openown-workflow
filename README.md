@@ -22,8 +22,16 @@ rejected and writes nothing.
 | Applicant | `applicant@example.com` | `applicantpass123` |
 | Reviewer | `reviewer@example.com` | `reviewerpass123` |
 
-Only role-scoped demo accounts are published. The live demo does not expose public
-Django-admin credentials.
+**Reading the API docs.** `/api/docs/` (and the raw schema at `/api/schema/`) is
+**admin-only** — `SERVE_PERMISSIONS = [IsAdminUser]`, so it requires `is_staff`. To make
+the docs reachable for review, the **Reviewer account is granted `is_staff`** — with **no
+Django-admin model permissions** assigned. Business access is governed by `role`, not by
+`is_staff`, so this is purely "can open the docs," not admin power. So: **log in as the
+reviewer to view the API docs.**
+
+Only role-scoped demo accounts are published. The production **Django-admin URL and
+superuser credentials are intentionally anonymized/redacted** here and are **available on
+request**.
 
 ---
 
@@ -134,7 +142,8 @@ Decisions worth calling out:
 
 ## API
 
-Interactive documentation: **`/api/docs/`** (Swagger UI). The raw schema is at
+Interactive documentation: **`/api/docs/`** (Swagger UI; **admin-only** — log in as the
+reviewer, which is `is_staff`; see [Live demo](#live-demo)). The raw schema is at
 `/api/schema/`. Authentication is token-based via `/api/auth-token/`.
 
 | Method | Path | Role | Purpose |
@@ -170,21 +179,45 @@ stack trace.
 
 ## Local development
 
-Everything runs in Docker. Commands below use the `just` shortcuts (a `justfile` is
-included with `COMPOSE_FILE=docker-compose.local.yml` exported); the explicit
-`docker compose -f docker-compose.local.yml …` form works too.
+Everything runs in Docker — you do **not** need Python, Postgres, or `uv` on the host,
+only Docker (with Compose) and, for the frontend, Node 20. Commands below use the `just`
+shortcuts (a `justfile` is included with `COMPOSE_FILE=docker-compose.local.yml`
+exported); the explicit `docker compose -f docker-compose.local.yml …` form works too.
+
+### Get the code
+
+```bash
+git clone https://github.com/makai77/openown-workflow.git
+cd openown-workflow
+```
+
+Local env files for development ship in `.envs/.local/` (committed for convenience), so no
+secrets setup is required to run locally.
 
 ### Backend + database
 
 ```bash
-just build                       # build the image
-just up                          # start postgres + django (and mailpit)
+just build                       # build the Django image
+just up                          # start postgres + django (and mailpit) in Docker
 just manage migrate              # apply migrations
-just manage seed_users           # create the applicant, reviewer, and admin users
+just manage seed_users           # create the applicant + reviewer demo users
 ```
 
 The API is then at `http://localhost:8000/` (docs at `http://localhost:8000/api/docs/`).
 Run the test suite with `just pytest`.
+
+### Create a local admin (optional)
+
+`seed_users` creates only the applicant and reviewer demo accounts — no superuser. To get
+into the local Django admin (e.g. to inspect rows), create one yourself:
+
+```bash
+just manage createsuperuser      # prompts for email (the USERNAME_FIELD) + password
+```
+
+There is no `username` field — log in with the email you entered. The admin is at
+`http://localhost:8000/admin/` locally. (The seeded reviewer is `is_staff`, so it too can
+reach the admin and the admin-only `/api/docs/`, but it has no model permissions there.)
 
 ### Frontend
 
@@ -218,7 +251,7 @@ accumulate applications; recreate the dev DB if you want a clean slate.
 The strategy follows the rubric: prove the workflow rules and the authorization boundary,
 not just the happy path. Counts below are from running the suites.
 
-**Backend — `133 passed` (pytest).** The workflow and API layers carry, among others:
+**Backend — `135 passed` (pytest).** The workflow and API layers carry, among others:
 
 - **Workflow transition matrix** (`test_workflow.py`, 14 tests) — for each transition: the
   legal path succeeds and writes one audit row; the illegal path raises the typed error;
@@ -230,6 +263,9 @@ not just the happy path. Counts below are from running the suites.
   application is unchanged.
 - **`available_actions`** (`test_available_actions.py`, 4) — the server-driven action list
   matches what the transition functions actually permit, per role and per status.
+- **Auth** (`test_login.py`, 2) — a browser carrying a Django session cookie can still
+  obtain a token (no spurious CSRF 403), and `TokenAuthentication` takes precedence over
+  `SessionAuthentication` so token-authenticated writes are never blocked by CSRF.
 - Plus model and user/seed tests.
 
 **Frontend — `39 passed` across 13 files (Vitest + Testing Library).** Component and
@@ -275,7 +311,9 @@ host's Apache:
 The **Namecheap VPS** already hosts an unrelated site on Apache (ports 80/443), so the
 cookiecutter default Traefik front end — which wants those ports — was dropped in favour
 of an Apache vhost scoped to `remuma.org`, leaving the existing site untouched. The full
-step-by-step runbook lives in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+step-by-step runbook (server paths, vhost, admin URL, TLS) contains
+deployment-environment specifics and is kept out of the public repo; it is **available on
+request**.
 
 ---
 
@@ -320,7 +358,7 @@ the brief requires, here's how — and, more importantly, what I verified myself
 **What I verified myself** — I understand and can explain every line submitted:
 
 - Ran the full backend gate locally: `ruff format`/`check`, `manage.py check`,
-  `makemigrations --check`, and the **133** pytest cases.
+  `makemigrations --check`, and the **135** pytest cases.
 - Ran the frontend gate: typecheck, lint, the **39** Vitest cases, and the production build.
 - Ran the **4** Playwright E2E flows against both servers, and smoke-tested both happy paths
   and the forbidden-call `403` in a real browser.

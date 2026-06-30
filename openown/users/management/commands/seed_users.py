@@ -14,6 +14,10 @@ SEED_USERS = [
         "name": "Bob Reviewer",
         "role": User.Role.REVIEWER,
         "password": "reviewerpass123",
+        # Staff (but NO admin model permissions) only so the reviewer can open the
+        # admin-gated API docs at /api/docs/ (SERVE_PERMISSIONS = IsAdminUser, i.e.
+        # is_staff). Business access is governed by `role`, not by is_staff.
+        "is_staff": True,
     },
 ]
 
@@ -31,6 +35,7 @@ class Command(BaseCommand):
                 password=data["password"],
                 name=data["name"],
                 role=data["role"],
+                is_staff=data.get("is_staff", False),
             )
             self.stdout.write(
                 self.style.SUCCESS(f"Created {user.role} - {user.email}"),

@@ -290,8 +290,14 @@ SOCIALACCOUNT_FORMS = {"signup": "openown.users.forms.UserSocialSignupForm"}
 # django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
+        # TokenAuthentication first: the SPA sends a token header, so it authenticates
+        # before SessionAuthentication and no Django session is used — which keeps
+        # SessionAuthentication's CSRF enforcement off the SPA's POST/PATCH writes even
+        # when the browser also carries a session cookie (e.g. from /admin).
+        # SessionAuthentication stays second so the admin-only browsable docs still
+        # identify the logged-in staff user.
         "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
