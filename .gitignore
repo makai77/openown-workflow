@@ -289,3 +289,23 @@ openown/media/
 ### Local scratch / personal notes (never commit)
 Quick reorientation so.txt
 revealcheck.py
+
+### Tool caches (keep alongside the already-ignored .mypy_cache / .pytest_cache)
+.ruff_cache/
+
+### Secrets / credentials — defence-in-depth (real secrets live only in
+### .envs/.production/ on the server, never in the repo). Catch stray key
+### material and ad-hoc "server info" notes before they can be committed.
+*.pem
+*.key
+*.p12
+*.pfx
+*.kdbx
+id_rsa*
+server-info-secretes.txt.md
+*secrets*.txt
+*secrets*.txt.md
+
+### Assessment brief — third-party document, not part of the deliverable
+Full-Stack_Developer_Assessment.docx.pdf
+*.docx.pdf
