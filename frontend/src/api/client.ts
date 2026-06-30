@@ -52,7 +52,11 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { method = "GET", body, query } = options;
 
-  const url = new URL(`${BASE_URL}${path}`);
+  // Second arg lets BASE_URL be a relative path (e.g. "/api" in production, served
+  // same-origin behind Apache): "/api" + "/auth-token/" resolves against the page
+  // origin. An absolute BASE_URL (e.g. the dev "http://localhost:8000/api") ignores
+  // the base, so this stays correct in both modes.
+  const url = new URL(`${BASE_URL}${path}`, window.location.origin);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(key, value);
