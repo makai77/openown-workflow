@@ -8,7 +8,8 @@ from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularRedocView
 from drf_spectacular.views import SpectacularSwaggerView
-from rest_framework.authtoken.views import obtain_auth_token
+
+from openown.users.api.views import LoginView
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -32,8 +33,9 @@ urlpatterns = [
 urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
-    # DRF auth token
-    path("api/auth-token/", obtain_auth_token, name="obtain_auth_token"),
+    # DRF auth token (LoginView: no SessionAuthentication, so a stray session
+    # cookie can't force CSRF on the token-less SPA login).
+    path("api/auth-token/", LoginView.as_view(), name="obtain_auth_token"),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path(
         "api/docs/",
