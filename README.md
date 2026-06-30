@@ -12,7 +12,7 @@ rejected and writes nothing.
 
 | | |
 |---|---|
-| **Live URL** | https://remuma.org *(to be filled after deploy)* |
+| **Live URL** | https://remuma.org |
 | **API docs** | https://remuma.org/api/docs/ (Swagger UI, served by drf-spectacular) |
 
 **Test credentials** (created by the `seed_users` command):
@@ -263,15 +263,19 @@ Pony Checkup) as an external reference for Django deployment hardening.
 
 ## Deployment
 
-Production runs as a Dockerized stack (`docker-compose.production.yml`):
+Production runs as a Dockerized stack (`docker-compose.production.yml`) behind the
+host's Apache:
 
-- **Django behind Gunicorn** serving the API,
-- **PostgreSQL** for persistence (with backup tooling),
-- **Traefik** as the reverse proxy, terminating TLS with **automatic Let's Encrypt
-  certificates**,
-- **Redis** and an **nginx** sidecar for media.
+- **Django behind Gunicorn**, published on `127.0.0.1:8000` (localhost only — never
+  exposed publicly by Docker),
+- **PostgreSQL** (with backup tooling) and **Redis**, both internal to the Docker network,
+- **Apache** as the public reverse proxy: it serves the built React SPA, proxies `/api`,
+  `/admin`, and `/static` to Gunicorn, injects `X-Forwarded-Proto`, and terminates TLS
+  with a **Let's Encrypt** certificate (certbot).
 
-It is deployed on a **Namecheap VPS** under the domain **remuma.org**. The full
+The **Namecheap VPS** already hosts an unrelated site on Apache (ports 80/443), so the
+cookiecutter default Traefik front end — which wants those ports — was dropped in favour
+of an Apache vhost scoped to `remuma.org`, leaving the existing site untouched. The full
 step-by-step runbook lives in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ---
