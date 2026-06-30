@@ -94,11 +94,11 @@ $DC run --rm django python manage.py seed_users
 $DC up -d
 ```
 
-**5. Build the SPA** (API base baked at build time → must be the absolute https URL):
+**5. Build the SPA** (API base is baked at build time from `frontend/.env.production`):
 ```bash
 cd /opt/openown/frontend
 npm ci
-VITE_API_BASE_URL=https://remuma.org/api npm run build   # → frontend/dist
+npm run build   # → frontend/dist, with VITE_API_BASE_URL=/api
 ```
 
 **6. Apache vhost + TLS:**
@@ -129,7 +129,7 @@ cd /opt/openown && git pull origin main
 docker compose -f docker-compose.production.yml build
 docker compose -f docker-compose.production.yml run --rm django python manage.py migrate
 docker compose -f docker-compose.production.yml up -d
-cd frontend && npm ci && VITE_API_BASE_URL=https://remuma.org/api npm run build
+cd frontend && npm ci && npm run build
 # static/SPA changes are picked up on the next request; no Apache reload needed
 ```
 
