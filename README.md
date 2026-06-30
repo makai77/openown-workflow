@@ -8,6 +8,28 @@ rejected and writes nothing.
 
 ---
 
+## Contents
+
+- [Live demo](#live-demo)
+- [What it implements](#what-it-implements)
+- [Tech stack](#tech-stack)
+- [Architecture overview](#architecture-overview)
+- [Data model & key design decisions](#data-model--key-design-decisions)
+- [API](#api)
+- [Local development](#local-development)
+  - [Get the code](#get-the-code)
+  - [Backend + database](#backend--database)
+  - [Create a local admin (optional)](#create-a-local-admin-optional)
+  - [Frontend](#frontend)
+  - [End-to-end tests](#end-to-end-tests)
+- [Testing](#testing)
+- [Security](#security)
+- [Deployment](#deployment)
+- [Trade-offs & what I'd do with more time](#trade-offs--what-id-do-with-more-time)
+- [AI usage disclosure](#ai-usage-disclosure)
+
+---
+
 ## Live demo
 
 | | |
