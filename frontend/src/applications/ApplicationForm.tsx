@@ -11,6 +11,7 @@ import { SelectField } from "@/components/SelectField";
 import { TextareaField } from "@/components/TextareaField";
 import { applicationFormSchema, CATEGORIES, CATEGORY_LABELS } from "@/lib/schemas";
 import type { ApplicationFormValues } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import {
   useApplication,
@@ -59,6 +60,7 @@ function ApplicationForm({
     resolver: zodResolver(applicationFormSchema),
     defaultValues,
   });
+  useDocumentTitle(heading);
 
   return (
     <form
@@ -96,7 +98,7 @@ function ApplicationForm({
       <button
         type="submit"
         disabled={submitting}
-        className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
       >
         {submitting ? "Saving…" : submitLabel}
       </button>

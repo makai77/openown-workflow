@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* Open Ownership brand tokens (official palette). Deliberately minimal: one
+   identity colour, one ink, and a refined system grotesque stack that echoes
+   the brand's Helvetica-style type without shipping a web font. */
+@theme {
+  --color-brand: #3d30d4; /* "Dull Blue" — core identity colour */
+  --color-brand-hover: #322ab0;
+  --color-ink: #191d23; /* "Mirage" — primary text */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: #ffffff;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}

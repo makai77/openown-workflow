@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { Field } from "@/components/Field";
 import { loginSchema } from "@/lib/schemas";
 import type { LoginValues } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import { useAuth } from "./context";
 
@@ -17,6 +18,7 @@ export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
+  useDocumentTitle("Sign in");
   const {
     register,
     handleSubmit,
@@ -72,7 +74,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
         >
           {isSubmitting ? "Signing in…" : "Sign in"}
         </button>

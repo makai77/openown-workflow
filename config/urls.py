@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include
 from django.urls import path
 from django.views import defaults as default_views
@@ -11,8 +12,22 @@ from drf_spectacular.views import SpectacularSwaggerView
 
 from openown.users.api.views import LoginView
 
+
+def api_root(_request):
+    # The product UI is the React SPA (served by Apache at /); Django is the API
+    # backend. Its root returns a small liveness/pointer payload instead of the
+    # cookiecutter landing page.
+    return JsonResponse(
+        {
+            "service": "Submission & Approval Workflow API",
+            "docs": "/api/docs/",
+            "status": "ok",
+        },
+    )
+
+
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("", api_root, name="home"),
     path(
         "about/",
         TemplateView.as_view(template_name="pages/about.html"),

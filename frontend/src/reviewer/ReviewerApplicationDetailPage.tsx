@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { TextareaField } from "@/components/TextareaField";
 import { CATEGORY_LABELS, reviewDecisionSchema } from "@/lib/schemas";
 import type { ReviewDecisionValues } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import {
   useApprove,
@@ -75,6 +76,7 @@ export function ReviewerApplicationDetailPage() {
   const id = Number(params.id);
   const { data, isPending, isError, error, refetch } =
     useReviewerApplication(id);
+  useDocumentTitle(data?.title);
 
   const startReview = useStartReview(id);
   const approve = useApprove(id);

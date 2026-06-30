@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { LoadingState } from "@/components/LoadingState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CATEGORY_LABELS } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import { useMyApplications } from "./hooks";
 
@@ -12,6 +13,7 @@ import { useMyApplications } from "./hooks";
 // loading, error (with retry), empty (with a CTA), and the populated list.
 export function MyApplicationsPage() {
   const { data, isPending, isError, error, refetch } = useMyApplications();
+  useDocumentTitle("My applications");
 
   return (
     <section className="space-y-4">
@@ -19,7 +21,7 @@ export function MyApplicationsPage() {
         <h1 className="text-xl font-semibold">My applications</h1>
         <Link
           to="/applications/new"
-          className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white"
+          className="rounded bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-hover"
         >
           New application
         </Link>

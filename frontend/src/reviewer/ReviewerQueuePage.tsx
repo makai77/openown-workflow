@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { SelectField } from "@/components/SelectField";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CATEGORY_LABELS } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import { useReviewerQueue } from "./hooks";
 
@@ -30,6 +31,7 @@ export function ReviewerQueuePage() {
   const [filter, setFilter] = useState<"" | ApplicationStatus>("SUBMITTED");
   const status = filter === "" ? undefined : filter;
   const { data, isPending, isError, error, refetch } = useReviewerQueue(status);
+  useDocumentTitle("Review queue");
 
   return (
     <section className="space-y-4">

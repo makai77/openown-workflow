@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { LoadingState } from "@/components/LoadingState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CATEGORY_LABELS } from "@/lib/schemas";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 import { useApplication, useSubmitApplication } from "./hooks";
 
@@ -18,6 +19,7 @@ export function ApplicationDetailPage() {
   const id = Number(params.id);
   const { data, isPending, isError, error, refetch } = useApplication(id);
   const submit = useSubmitApplication(id);
+  useDocumentTitle(data?.title);
 
   if (isPending) return <LoadingState />;
   if (isError) {
@@ -70,7 +72,7 @@ export function ApplicationDetailPage() {
             type="button"
             onClick={() => submit.mutate()}
             disabled={submit.isPending}
-            className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
           >
             {submit.isPending ? "Submitting…" : "Submit for review"}
           </button>
