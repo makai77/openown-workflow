@@ -1,9 +1,5 @@
 # Frontend Setup Reference — `frontend/`
 
-Drop this at `docs/engineering/FRONTEND_SETUP.md` (or wherever your engineering docs live).
-It is the verified, current setup target for the React SPA. The frontend is a **separate
-project** living at the repo root next to `openown/`, invisible to the Django Docker setup.
-The two meet only over HTTP.
 
 ```
 openown/                     ← repo root
