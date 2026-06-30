@@ -1,61 +1,329 @@
-# Open Ownership Workflow
+# Submission & Approval Workflow
 
-Submission and approval workflow with audit trail
+A two-sided web app (Assignment B) built around one thing done correctly: a status
+workflow with a tamper-evident audit trail. An **Applicant** drafts and submits
+applications; a **Reviewer** works a queue and approves, rejects, or returns them with a
+comment. Every legal transition writes exactly one audit row; every illegal one is
+rejected and writes nothing.
 
-[![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+---
 
-## Settings
+## Live demo
 
-Moved to [settings](https://cookiecutter-django.readthedocs.io/en/latest/1-getting-started/settings.html).
+| | |
+|---|---|
+| **Live URL** | https://remuma.org *(to be filled after deploy)* |
+| **API docs** | https://remuma.org/api/docs/ (Swagger UI, served by drf-spectacular) |
 
-## Basic Commands
+**Test credentials** (created by the `seed_users` command):
 
-### Setting Up Your Users
+| Role | Email | Password |
+|---|---|---|
+| Applicant | `applicant@example.com` | `applicantpass123` |
+| Reviewer | `reviewer@example.com` | `reviewerpass123` |
 
-- To create a **normal user account**, just go to Sign Up and fill out the form. Once you submit it, you'll see a "Verify Your E-mail Address" page. Go to your console to see a simulated email verification message. Copy the link into your browser. Now the user's email should be verified and ready to go.
+A Django-admin superuser (`admin@example.com` / `adminpass123`) is also seeded for
+inspecting the database via `/admin/`. Its `is_staff`/`is_superuser` flags are kept
+separate from the business `role` field — admin access is not reviewer access.
 
-- To create a **superuser account**, use this command:
+---
 
-      uv run python manage.py createsuperuser
+## What it implements
 
-For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
+The core is the state machine the backend enforces. Illegal transitions are rejected with
+a structured error; they never change state and never write an audit row.
 
-### Type checks
+```
+DRAFT ──submit──▶ SUBMITTED ──start-review──▶ UNDER_REVIEW ──approve──▶ APPROVED
+  ▲                   │                            │
+  │                   ├──────── reject ────────────┼──▶ REJECTED
+  │                   │                            │
+  └─── re-submit ─── RETURNED ◀──── return ────────┘
+```
 
-Running type checks with mypy:
+- **Applicant** — creates, edits, and submits their own drafts; sees only their own
+  applications. Can edit only while the application is `DRAFT` or `RETURNED`; once it
+  leaves those states the applicant cannot touch it.
+- **Reviewer** — sees the queue of non-draft applications (filterable by `?status=`),
+  opens one, and moves it forward. `reject` and `return` require a non-blank comment;
+  `start-review` and `approve` do not. `APPROVED` and `REJECTED` are terminal.
+- **Audit trail** — every transition records who acted, the old → new status, the comment,
+  and a timestamp, written inside the same transaction as the status change and shown on
+  the detail page.
 
-    uv run mypy openown
+Authorization is enforced server-side on every mutation: an applicant cannot approve,
+reject, or return anything — even by calling the reviewer endpoint directly. That path
+returns `403` and is covered by an explicit test.
 
-### Test coverage
+---
 
-To run the tests, check your test coverage, and generate an HTML coverage report:
+## Tech stack
 
-    uv run coverage run -m pytest
-    uv run coverage html
-    uv run open htmlcov/index.html
+**Backend** — Django 6.0 + Django REST Framework 3.17, PostgreSQL, Gunicorn, Docker.
+API documentation via drf-spectacular (OpenAPI 3 + Swagger UI). Python 3.14.
 
-#### Running tests with pytest
+**Frontend** — React 19 + TypeScript (Vite 8), Tailwind CSS 4, TanStack Query for
+server-state, React Hook Form + Zod for forms and validation, React Router.
 
-    uv run pytest
+**Testing** — pytest + pytest-django (backend), Vitest + Testing Library (frontend unit),
+Playwright (end-to-end). Ruff for lint/format; pyrefly as an additional type-checking gate.
 
-### Live reloading and Sass CSS compilation
+Exact pinned versions live in `pyproject.toml` and `frontend/package.json`.
 
-Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally.html#using-webpack-or-gulp).
+---
 
-### Email Server
+## Architecture overview
 
-In development, it is often nice to be able to see emails that are being sent from your application. For that reason local SMTP server [Mailpit](https://github.com/axllent/mailpit) with a web interface is available as docker container.
+The request path is a straight line: **React → DRF view → workflow service → PostgreSQL**.
+Views stay thin — they fetch the object, call a service function, catch `WorkflowError`,
+and respond. They contain no business legality of their own.
 
-Container mailpit will start automatically when you will run all docker containers.
-Please check [cookiecutter-django Docker documentation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally-docker.html) for more details how to start all containers.
+Two principles govern the whole design:
 
-With Mailpit running, to view messages that are sent by your application, open your browser and go to `http://127.0.0.1:8025`
+1. **All transition rules live in one service.** `applications/services/workflow.py` is the
+   only code that assigns `application.status`. It runs each transition inside
+   `transaction.atomic()` with `select_for_update()`, writes the audit row in the same
+   block, and returns the updated object or raises a typed `WorkflowError`. An illegal
+   transition is rejected before any write — so the database can never hold a status the
+   workflow doesn't permit, and never an audit row for a transition that didn't happen.
+   This rule is enforced in development by a hook that blocks any `application.status = …`
+   assignment outside that module.
+
+2. **The frontend renders server truth and never decides legality.** The detail endpoint
+   returns an `available_actions` list — the exact reviewer actions the current user may
+   take on that object right now, computed by the same service that enforces the
+   transitions. The UI renders buttons from that list and encodes zero rules of its own.
+   If the UI and the backend ever disagreed, the backend would still reject the call; the
+   `available_actions` design removes the chance for them to disagree in the first place.
+
+---
+
+## Data model & key design decisions
+
+Two models, in `openown/applications/models.py`:
+
+**`Application`** — `owner` (FK to user), `title`, `category`
+(`GENERAL`/`COMPLIANCE`/`FINANCE`/`OPERATIONS`), `description`, `amount` (nullable
+decimal), `status` (the six states), plus backend-managed `submitted_at`, `reviewed_at`,
+`created_at`, `updated_at`. `status`, `owner`, and the timestamps are assigned by the
+backend and never trusted from the client.
+
+**`ApplicationAuditLog`** — `application`, `actor`, `from_status`, `to_status`, `comment`,
+`created_at`.
+
+Decisions worth calling out:
+
+- **`PROTECT` on the audit actor.** The audit FK to the user who acted uses
+  `on_delete=PROTECT`. An audit trail you can erase by deleting a user is not an audit
+  trail; deleting an actor who has history is refused.
+- **No `DELETE` on applications.** The applicant viewset deliberately omits destroy —
+  removing an application would erase its trail, the opposite of an auditable workflow.
+- **Workflow logic lives in a service module, not in models, signals, or views.** Keeping
+  every transition in one place is what makes the rules testable in isolation and
+  impossible to bypass. The audit row is written inline in the transition, never via a
+  signal — signals make "did this write happen?" non-local and hard to reason about.
+- **Fixed query budget, no N+1.** List responses use `ApplicationListSerializer` with
+  `.with_owner()` (one JOIN) and never carry the audit trail. Detail responses and every
+  transition response use `.with_owner().with_audit_trail()`, so a detail read is a
+  constant ~handful of queries regardless of how long the trail is. `available_actions`
+  is computed purely from the already-loaded object — it adds no query.
+- **Indexes** on `Application(owner, status)` and `(status, created_at)` back the two real
+  access patterns (an applicant's own list, the reviewer queue ordered by recency); the
+  audit log is indexed by `(application, created_at)` and `(actor, created_at)`.
+
+---
+
+## API
+
+Interactive documentation: **`/api/docs/`** (Swagger UI). The raw schema is at
+`/api/schema/`. Authentication is token-based via `/api/auth-token/`.
+
+| Method | Path | Role | Purpose |
+|---|---|---|---|
+| `GET` | `/api/applications/` | Applicant | List own applications |
+| `POST` | `/api/applications/` | Applicant | Create a draft |
+| `GET` | `/api/applications/{id}/` | Applicant | Retrieve own application + trail |
+| `PATCH` | `/api/applications/{id}/` | Applicant | Edit a `DRAFT`/`RETURNED` application |
+| `POST` | `/api/applications/{id}/submit/` | Applicant | `DRAFT`/`RETURNED` → `SUBMITTED` |
+| `GET` | `/api/reviewer/applications/` | Reviewer | Queue (filter with `?status=`) |
+| `GET` | `/api/reviewer/applications/{id}/` | Reviewer | Retrieve + trail |
+| `POST` | `/api/reviewer/applications/{id}/start-review/` | Reviewer | `SUBMITTED` → `UNDER_REVIEW` |
+| `POST` | `/api/reviewer/applications/{id}/approve/` | Reviewer | → `APPROVED` |
+| `POST` | `/api/reviewer/applications/{id}/reject/` | Reviewer | → `REJECTED` (comment required) |
+| `POST` | `/api/reviewer/applications/{id}/return/` | Reviewer | → `RETURNED` (comment required) |
+
+Every error — validation, illegal transition, not-found, unauthorized — returns a single
+structured envelope; the API never replies `200` with an error body and never leaks a
+stack trace.
+
+```json
+{ "error": { "code": "invalid_transition", "message": "…", "details": {} } }
+```
+
+| Status | Used for | `code` |
+|---|---|---|
+| `400` | Validation failure / illegal transition / missing comment | `validation_error`, `invalid_transition`, `comment_required` |
+| `401` | Unauthenticated request to a protected endpoint | `not_authenticated` |
+| `403` | Authenticated but wrong role / not the owner | `permission_denied` |
+| `404` | Object not found (or not visible to this user) | `not_found` |
+
+---
+
+## Local development
+
+Everything runs in Docker. Commands below use the `just` shortcuts (a `justfile` is
+included with `COMPOSE_FILE=docker-compose.local.yml` exported); the explicit
+`docker compose -f docker-compose.local.yml …` form works too.
+
+### Backend + database
+
+```bash
+just build                       # build the image
+just up                          # start postgres + django (and mailpit)
+just manage migrate              # apply migrations
+just manage seed_users           # create the applicant, reviewer, and admin users
+```
+
+The API is then at `http://localhost:8000/` (docs at `http://localhost:8000/api/docs/`).
+Run the test suite with `just pytest`.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev                      # Vite dev server at http://localhost:5173
+```
+
+The dev server proxies API calls to the backend on `:8000`; CORS in local settings allows
+`http://localhost:5173`.
+
+### End-to-end tests
+
+Playwright drives the real app, so it needs **both servers up** — backend on `:8000`
+(migrated and seeded) and the frontend on `:5173`:
+
+```bash
+cd frontend
+npx playwright install           # first run only, fetches browsers
+npm run e2e
+```
+
+Note: the E2E flows create real rows in the dev database and do **not** auto-reset it. Re-runs
+accumulate applications; recreate the dev DB if you want a clean slate.
+
+---
+
+## Testing
+
+The strategy follows the rubric: prove the workflow rules and the authorization boundary,
+not just the happy path. Counts below are from running the suites.
+
+**Backend — `133 passed` (pytest).** The workflow and API layers carry, among others:
+
+- **Workflow transition matrix** (`test_workflow.py`, 14 tests) — for each transition: the
+  legal path succeeds and writes one audit row; the illegal path raises the typed error;
+  and the illegal path writes **zero** audit rows.
+- **Reviewer API** (`test_api_reviewer.py`, 18) and **applicant API**
+  (`test_api_applicant.py`, 12) — endpoint behavior, status codes, and the error envelope.
+- **Authorization** (`test_api_permissions.py`, 3) — including the mandatory case: an
+  applicant calling the reviewer `approve` endpoint directly gets **`403`** and the
+  application is unchanged.
+- **`available_actions`** (`test_available_actions.py`, 4) — the server-driven action list
+  matches what the transition functions actually permit, per role and per status.
+- Plus model and user/seed tests.
+
+**Frontend — `39 passed` across 13 files (Vitest + Testing Library).** Component and
+page-level tests covering the four UI states (loading / error / empty / loaded), form
+validation, the status badge, and the audit trail rendering.
+
+**End-to-end — `4` Playwright flows.** Applicant create-edit-submit; reviewer
+start-review-and-approve; reviewer must-comment-to-reject with the rejection showing in the
+trail; and the forbidden applicant-→-reviewer-endpoint `403` path.
+
+---
+
+## Security
+
+The production settings are locked down, not left at framework defaults:
+
+- **`DEBUG=False`** in production; no stack traces in responses.
+- **Secrets from the environment** — `SECRET_KEY`, database credentials, and allowed hosts
+  are read from env files that are never committed.
+- **HTTPS enforced** — `SECURE_SSL_REDIRECT`, HSTS, `SECURE_PROXY_SSL_HEADER`, and
+  `__Secure-` session/CSRF cookie names with `Secure` flags.
+- **`ALLOWED_HOSTS`, CSRF, and CORS** are restricted to the real origin; production never
+  opens CORS the way local development does.
+
+This was **validated with `python manage.py check --deploy`** (run clean) and **reviewed
+against the DJ Checkup checklist** (djcheckup.com, the current successor to the retired
+Pony Checkup) as an external reference for Django deployment hardening.
+
+---
 
 ## Deployment
 
-The following details how to deploy this application.
+Production runs as a Dockerized stack (`docker-compose.production.yml`):
 
-### Docker
+- **Django behind Gunicorn** serving the API,
+- **PostgreSQL** for persistence (with backup tooling),
+- **Traefik** as the reverse proxy, terminating TLS with **automatic Let's Encrypt
+  certificates**,
+- **Redis** and an **nginx** sidecar for media.
 
-See detailed [cookiecutter-django Docker documentation](https://cookiecutter-django.readthedocs.io/en/latest/3-deployment/deployment-with-docker.html).
+It is deployed on a **Namecheap VPS** under the domain **remuma.org**. The full
+step-by-step runbook lives in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+
+---
+
+## Trade-offs & what I'd do with more time
+
+The brief rewards a small, solid surface over feature breadth, so several things were left
+out **deliberately** to keep the core clean and well-tested:
+
+- **No notifications** (email / in-app on status change) — a stretch goal; out of scope.
+- **No file attachments** — explicitly optional in the brief; the model carries `amount`
+  instead, and skipping uploads avoided storage/scanning concerns that add no workflow value.
+- **`available_actions` covers reviewer actions only.** Applicant-side actions (edit,
+  submit) are still derived in the UI from status. Folding them into the same server-driven
+  list would make the frontend fully rule-free; it's a natural next step.
+- **No E2E database reset.** The Playwright flows append to the dev DB. A fixture that
+  resets state per run would make them idempotent.
+- **Pagination/search on the reviewer queue** beyond the status filter — a listed stretch
+  goal; not built so the queue stays simple.
+
+With more time I'd close the `available_actions` gap, add the E2E reset fixture, and add
+queue pagination + search.
+
+---
+
+## AI usage disclosure
+
+This project was built with **Claude** (the model) via **Claude Code** (the CLI agent). As
+the brief requires, here's how — and, more importantly, what I verified myself.
+
+**How AI was used:**
+
+- Planning and breaking the work into reviewable slices.
+- Scaffolding boilerplate (models, serializers, viewsets) from a stated spec.
+- Generating the test matrix — legal/illegal transitions, the zero-audit-on-illegal
+  assertions, and the authorization tests.
+- Drafting documentation, including this README.
+- Reviewing my own diffs for the architecture rules (thin views, service-only transitions,
+  the query budget).
+- Setting up the repo's agent configuration and pre-commit hooks (e.g. the hook that blocks
+  any `application.status` assignment outside the workflow service).
+
+**What I verified myself** — I understand and can explain every line submitted:
+
+- Ran the full backend gate locally: `ruff format`/`check`, `manage.py check`,
+  `makemigrations --check`, and the **133** pytest cases.
+- Ran the frontend gate: typecheck, lint, the **39** Vitest cases, and the production build.
+- Ran the **4** Playwright E2E flows against both servers, and smoke-tested both happy paths
+  and the forbidden-call `403` in a real browser.
+- Ran `manage.py check --deploy` against production settings and reviewed the deployment
+  against the DJ Checkup checklist.
+- Performed the deploy and confirmed the live app and API docs are reachable.
+
+AI accelerated the work; the design decisions, the verification, and the final
+correctness are mine.
