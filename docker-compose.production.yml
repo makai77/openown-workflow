@@ -45,5 +45,5 @@ services:
     restart: unless-stopped
 
   redis:
-    image: docker.io/redis:7.2
+    image: docker.io/redis:8.8
     restart: unless-stopped
