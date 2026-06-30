@@ -22,3 +22,4 @@ def test_seed_users_creates_applicant_and_reviewer_idempotently():
     assert reviewer.check_password("reviewerpass123")
     assert User.objects.filter(email="applicant@example.com").count() == 1
     assert User.objects.filter(email="reviewer@example.com").count() == 1
+    assert not User.objects.filter(is_superuser=True).exists()

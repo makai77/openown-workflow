@@ -22,9 +22,8 @@ rejected and writes nothing.
 | Applicant | `applicant@example.com` | `applicantpass123` |
 | Reviewer | `reviewer@example.com` | `reviewerpass123` |
 
-A Django-admin superuser (`admin@example.com` / `adminpass123`) is also seeded for
-inspecting the database via `/admin/`. Its `is_staff`/`is_superuser` flags are kept
-separate from the business `role` field — admin access is not reviewer access.
+Only role-scoped demo accounts are published. The live demo does not expose public
+Django-admin credentials.
 
 ---
 
